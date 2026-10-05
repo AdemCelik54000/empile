@@ -38,4 +38,18 @@ struct EdgeNudgeTests {
         for _ in 0..<90 { nudge.update(fingerX: nil, width: 400, deltaTime: 1.0 / 60) }
         #expect(abs(nudge.push) < 0.01)
     }
+
+    @Test func staysPeekingWhenTheFingerComesBackToTheMiddle() {
+        var nudge = makeNudge()
+        for _ in 0..<60 { nudge.update(fingerX: 395, width: 400, deltaTime: 1.0 / 60) }
+        for _ in 0..<120 { nudge.update(fingerX: 200, width: 400, deltaTime: 1.0 / 60) }
+        #expect(nudge.push > 0.9)
+    }
+
+    @Test func switchesSidesAtTheOppositeEdge() {
+        var nudge = makeNudge()
+        for _ in 0..<60 { nudge.update(fingerX: 395, width: 400, deltaTime: 1.0 / 60) }
+        for _ in 0..<90 { nudge.update(fingerX: 3, width: 400, deltaTime: 1.0 / 60) }
+        #expect(nudge.push < -0.9)
+    }
 }
