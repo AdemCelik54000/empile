@@ -6,6 +6,7 @@ struct HomeView: View {
     /// The best score ever, in points.
     let record: Int
     let onPlay: () -> Void
+    let onLeaderboard: () -> Void
     let onSettings: () -> Void
 
     var body: some View {
@@ -54,12 +55,20 @@ struct HomeView: View {
                         .frame(maxWidth: .infinity, minHeight: 52)
                 }
                 .buttonStyle(.glassProminent)
-                Button(action: onSettings) {
-                    Label("Réglages", systemImage: "gearshape")
-                        .font(.body.weight(.medium))
-                        .frame(maxWidth: .infinity, minHeight: 44)
+                HStack(spacing: 12) {
+                    Button(action: onLeaderboard) {
+                        Label("Classement", systemImage: "trophy")
+                            .font(.body.weight(.medium))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.glass)
+                    Button(action: onSettings) {
+                        Label("Réglages", systemImage: "gearshape")
+                            .font(.body.weight(.medium))
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.glass)
                 }
-                .buttonStyle(.glass)
             }
         }
     }

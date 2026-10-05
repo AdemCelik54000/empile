@@ -12,6 +12,7 @@ struct RootView: View {
     @State private var session: GameSession
     @State private var scene: TowerScene
     @State private var ads = AdManager()
+    @State private var gameCenter = GameCenterManager()
     @State private var screen = Screen.home
     @State private var isPauseMenuShown = false
     @State private var isSettingsShown = false
@@ -53,6 +54,7 @@ struct RootView: View {
                     scene: scene,
                     record: settings.bestScore,
                     onPlay: play,
+                    onLeaderboard: { openLeaderboard() },
                     onSettings: { isSettingsShown = true }
                 )
                 .transition(.opacity)
@@ -67,6 +69,13 @@ struct RootView: View {
                 .tint(Color(uiColor: Palette.accent))
         }
         .task { await ads.start() }
+        .task {
+            gameCenter.authenticate()
+            gameCenter.submit(settings.bestScore)
+        }
+        .onChange(of: session.phase) { _, phase in
+            if phase == .gameOver { gameCenter.submit(settings.bestScore) }
+        }
         .onChange(of: settings.isSoundOn, initial: true) { _, _ in applyFeedbackSettings() }
         .onChange(of: settings.isHapticsOn) { _, _ in applyFeedbackSettings() }
         .onChange(of: scenePhase) { _, phase in
@@ -91,6 +100,7 @@ struct RootView: View {
         guard !isAbandoningGame else { return }
         isAbandoningGame = true
         settings.registerFinishedGame()
+        gameCenter.submit(settings.bestScore)
         Task {
             await ads.presentIfDue(settings)
             isAbandoningGame = false
@@ -108,7 +118,13 @@ struct RootView: View {
         isPauseMenuShown = true
     }
 
+    private func openLeaderboard() {
+        gameCenter.submit(settings.bestScore)
+        gameCenter.showLeaderboard()
+    }
+
     private func goHome() {
+        gameCenter.submit(settings.bestScore)
         scene.prepareForPause()
         isPauseMenuShown = false
         screen = .home
