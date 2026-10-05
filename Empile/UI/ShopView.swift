@@ -61,15 +61,15 @@ struct ShopView: View {
                     }
                 }
             }
-            PurchaseButton(title: "Changer en Or", symbol: BlockCatalog.gold.symbol,
-                           detail: "Très lourde et collante : l'appui idéal.",
-                           price: Tuning.Shop.goldPrice, isEnabled: session.canTurnToGold) {
-                buy(session.turnSelectedToGold())
-            }
-            PurchaseButton(title: "Autre forme", symbol: "arrow.triangle.2.circlepath",
+            PurchaseButton(title: "Changer de forme", symbol: "arrow.triangle.2.circlepath",
                            detail: "Même matière, une forme différente.",
                            price: Tuning.Shop.reshapePrice, isEnabled: session.canReshape) {
                 buy(session.reshapeSelected())
+            }
+            PurchaseButton(title: "Changer de matière", symbol: "dice",
+                           detail: "Même forme, une matière au hasard.",
+                           price: Tuning.Shop.rematerialPrice, isEnabled: session.canChangeMaterial) {
+                buy(session.changeSelectedMaterial())
             }
         }
     }

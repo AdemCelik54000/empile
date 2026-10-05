@@ -224,10 +224,10 @@ enum Tuning {
         static let gust: ClosedRange<TimeInterval> = 2.8...4
         /// Push on a piece at the peak of a gust, as a share of what that piece would weigh in stone.
         /// A wide, well-built tower holds; a thin column a few pieces tall tips over; glass slides off.
-        static let pressure: CGFloat = 0.45
+        static let pressure: CGFloat = 0.6
         /// Added for each milestone past `startLevel`, up to `maxPressure`.
-        static let pressurePerLevel: CGFloat = 0.04
-        static let maxPressure: CGFloat = 0.8
+        static let pressurePerLevel: CGFloat = 0.05
+        static let maxPressure: CGFloat = 1.05
         /// Where the push lands on each piece: 0 = its middle, 1 = its top edge. Higher tips pieces over more.
         static let pushHeight: CGFloat = 0.8
         // Streaks.
@@ -306,8 +306,8 @@ enum Tuning {
     }
 
     enum Shop {
-        /// Turn the selected piece into gold.
-        static let goldPrice = 3
+        /// Give the selected piece another, random material.
+        static let rematerialPrice = 2
         /// Give the selected piece another shape.
         static let reshapePrice = 1
         static let lifePrice = 8
@@ -471,10 +471,14 @@ enum Tuning {
         static let springVolume: Float = 0.7
         static let shatterVolume: Float = 0.9
         static let lifeLostVolume: Float = 0.7
+        static let gameOverVolume: Float = 0.8
         static let resultVolume: Float = 0.6
         /// Notes of the milestone arpeggio, then of a lost piece's fall (semitones).
         static let milestoneArpeggio: [Float] = [0, 4, 7, 12, 16]
         static let lifeLostNotes: [Float] = [-5, -12]
+        /// The sad run down when the last piece is lost (semitones).
+        static let gameOverNotes: [Float] = [0, -3, -7, -12]
+        static let gameOverSpacing: TimeInterval = 0.26
         /// Played together when the shop sells something.
         static let purchaseNotes: [Float] = [7, 12]
         static let arpeggioSpacing: TimeInterval = 0.08
@@ -587,6 +591,18 @@ enum Tuning {
             duration: 0.8,
             attack: 0.01,
             release: 0.1
+        )
+        /// A mellow, falling-away tone for the end of a game.
+        static let gameOver = SoundRecipe(
+            modes: [
+                .init(frequency: 330, amplitude: 1, decay: 0.45),
+                .init(frequency: 660, amplitude: 0.3, decay: 0.3),
+                .init(frequency: 990, amplitude: 0.1, decay: 0.15),
+            ],
+            noise: .init(amplitude: 0.03, decay: 0.02, brightness: 0.1),
+            duration: 1,
+            attack: 0.01,
+            release: 0.2
         )
         /// A bright, ringing clink of metal.
         static let goldImpact = SoundRecipe(

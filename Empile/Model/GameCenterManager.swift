@@ -36,11 +36,34 @@ final class GameCenterManager {
         flush()
     }
 
-    /// Opens Game Center on this game's leaderboard.
-    func showLeaderboard() {
-        GKAccessPoint.shared.trigger(
-            leaderboardID: Self.leaderboardID, playerScope: .global, timeScope: .allTime
-        ) {}
+    /// One line of the global leaderboard.
+    struct Row: Identifiable, Sendable {
+        let rank: Int
+        let name: String
+        let score: String
+        let isMe: Bool
+        var id: Int { rank }
+    }
+
+    /// The best players of all time, the player's own line included even when outside the top.
+    func loadTop(count: Int = 25) async throws -> [Row] {
+        guard let board = try await GKLeaderboard.loadLeaderboards(IDs: [Self.leaderboardID]).first else {
+            return []
+        }
+        let (me, entries, _) = try await board.loadEntries(
+            for: .global, timeScope: .allTime, range: NSRange(location: 1, length: count)
+        )
+        func row(_ entry: GKLeaderboard.Entry) -> Row {
+            Row(
+                rank: entry.rank,
+                name: entry.player.displayName,
+                score: entry.formattedScore,
+                isMe: entry.player.gamePlayerID == GKLocalPlayer.local.gamePlayerID
+            )
+        }
+        var rows = entries.map(row)
+        if let me, !rows.contains(where: { $0.rank == me.rank }) { rows.append(row(me)) }
+        return rows
     }
 
     private func flush() {

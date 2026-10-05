@@ -124,15 +124,19 @@ struct GameSessionTests {
         #expect(session.hand.map(\.id) == [0, 1, 2])
     }
 
-    @Test func goldCostsGemsAndChangesOnlyTheSelectedPiece() {
+    @Test func changingMaterialCostsGemsAndChangesOnlyTheSelectedPiece() {
         let session = makeSession(supply: barsOnly)
-        #expect(!session.canTurnToGold)
+        #expect(!session.canChangeMaterial)
         earnGems(session, milestones: 1)
-        session.select(session.hand[2].id)
-        #expect(session.turnSelectedToGold())
-        #expect(session.hand.map(\.kind) == [.stone, .stone, .gold])
-        #expect(session.gems == Tuning.Climb.milestoneGems - Tuning.Shop.goldPrice)
-        #expect(!session.canTurnToGold)
+        let before = session.hand
+        session.select(before[2].id)
+        #expect(session.changeSelectedMaterial())
+        #expect(session.hand[0] == before[0])
+        #expect(session.hand[1] == before[1])
+        #expect(session.hand[2].id == before[2].id)
+        #expect(session.hand[2].shape == before[2].shape)
+        #expect(session.hand[2].kind != before[2].kind)
+        #expect(session.gems == Tuning.Climb.milestoneGems - Tuning.Shop.rematerialPrice)
     }
 
     @Test func reshapingGivesAnotherShapeAndKeepsTheMaterial() {
@@ -159,7 +163,7 @@ struct GameSessionTests {
         let session = makeSession()
         earnGems(session, milestones: 2)
         _ = session.pickUp(session.hand[0].id)
-        #expect(!session.canTurnToGold)
+        #expect(!session.canChangeMaterial)
         #expect(!session.reshapeSelected())
     }
 }

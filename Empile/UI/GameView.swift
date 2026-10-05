@@ -117,8 +117,9 @@ struct GameView: View {
         }
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
-        // Dragging is the core gesture: a first swipe from the bottom edge should not leave the game.
-        .defersSystemGestures(on: .bottom)
+        // Dragging is the core gesture: a first swipe from the top or bottom edge should neither leave the game nor
+        // open the notification or control center (which pauses the game and puts the held block back).
+        .defersSystemGestures(on: .vertical)
     }
 
     /// Header on top, milestone banner under it, hand or end of game at the bottom.

@@ -177,16 +177,16 @@ final class GameSession {
 
     // MARK: - Shop
 
-    var canTurnToGold: Bool { canSpend(Tuning.Shop.goldPrice) && activeCard.map { $0.kind != .gold } == true }
+    var canChangeMaterial: Bool { canSpend(Tuning.Shop.rematerialPrice) && activeCard != nil }
     var canReshape: Bool { canSpend(Tuning.Shop.reshapePrice) && activeCard != nil }
     var canBuyLife: Bool { canSpend(Tuning.Shop.lifePrice) && lives < startingLives }
 
-    /// Makes the selected piece gold: heavy and grippy, it anchors the tower.
+    /// Gives the selected piece another material, picked at random.
     @discardableResult
-    func turnSelectedToGold() -> Bool {
-        guard canTurnToGold, let index = activeIndex else { return false }
-        gems -= Tuning.Shop.goldPrice
-        hand[index].kind = .gold
+    func changeSelectedMaterial() -> Bool {
+        guard canChangeMaterial, let index = activeIndex else { return false }
+        gems -= Tuning.Shop.rematerialPrice
+        hand[index] = supply.rematerialized(hand[index], using: &generator)
         return true
     }
 

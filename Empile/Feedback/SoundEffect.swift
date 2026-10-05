@@ -13,6 +13,7 @@ enum SoundEffect: CaseIterable, Sendable {
     case windGust
     case chirp
     case tensionDrone
+    case gameOver
 
     /// The sound of a block of this kind hitting something.
     static func impact(of kind: BlockKind) -> SoundEffect {
@@ -39,6 +40,7 @@ enum SoundEffect: CaseIterable, Sendable {
         case .windGust: Tuning.Sound.windGust
         case .chirp: Tuning.Sound.chirp
         case .tensionDrone: Tuning.Sound.tensionDrone
+        case .gameOver: Tuning.Sound.gameOver
         }
     }
 

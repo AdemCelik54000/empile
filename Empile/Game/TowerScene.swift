@@ -330,8 +330,13 @@ final class TowerScene: SKScene {
 
     private func loseLife() {
         session.loseLife()
-        playNotes(Tuning.Sound.lifeLostNotes, effect: .lifeLost, volume: Tuning.Sound.lifeLostVolume,
-                  spacing: Tuning.Sound.lifeLostSpacing)
+        if session.isPlaying {
+            playNotes(Tuning.Sound.lifeLostNotes, effect: .lifeLost, volume: Tuning.Sound.lifeLostVolume,
+                      spacing: Tuning.Sound.lifeLostSpacing)
+        } else {
+            playNotes(Tuning.Sound.gameOverNotes, effect: .gameOver, volume: Tuning.Sound.gameOverVolume,
+                      spacing: Tuning.Sound.gameOverSpacing)
+        }
         haptics.play(Tuning.Haptics.lifeLost, spacing: Tuning.Haptics.lifeLostSpacing)
         cameraRig.shake(strength: Tuning.Juice.lostPieceShake)
         if !session.isPlaying {

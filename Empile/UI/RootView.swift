@@ -16,6 +16,7 @@ struct RootView: View {
     @State private var screen = Screen.home
     @State private var isPauseMenuShown = false
     @State private var isSettingsShown = false
+    @State private var isLeaderboardShown = false
     /// A game is being given up: the ad, if one is due, is on screen or about to be.
     @State private var isAbandoningGame = false
     @Environment(\.scenePhase) private var scenePhase
@@ -66,6 +67,10 @@ struct RootView: View {
         .sheet(isPresented: $isSettingsShown) {
             SettingsView(settings: settings)
                 // Sheets do not inherit the tint of the screen that presents them.
+                .tint(Color(uiColor: Palette.accent))
+        }
+        .sheet(isPresented: $isLeaderboardShown) {
+            LeaderboardView(gameCenter: gameCenter)
                 .tint(Color(uiColor: Palette.accent))
         }
         .task { await ads.start() }
@@ -120,7 +125,7 @@ struct RootView: View {
 
     private func openLeaderboard() {
         gameCenter.submit(settings.bestScore)
-        gameCenter.showLeaderboard()
+        isLeaderboardShown = true
     }
 
     private func goHome() {
