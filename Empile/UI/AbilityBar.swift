@@ -128,7 +128,7 @@ struct AdRewardButton: View {
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: "play.rectangle.fill")
+            Image(systemName: Tuning.Ads.isEnabled ? "play.rectangle.fill" : "gift.fill")
                 .font(.system(size: 30, weight: .semibold))
                 .frame(width: 50, height: 50)
         }

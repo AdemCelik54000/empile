@@ -24,7 +24,7 @@ final class AdManager: NSObject {
 
     /// Call once, when the app opens. Does nothing the second time.
     func start() async {
-        guard !isStarted else { return }
+        guard Tuning.Ads.isEnabled, !isStarted else { return }
         isStarted = true
         await askForConsent()
         guard ConsentInformation.shared.canRequestAds else { return }
@@ -35,7 +35,7 @@ final class AdManager: NSObject {
 
     /// Shows an ad if the player has finished enough games since the last one, and records it.
     func presentIfDue(_ settings: GameSettings) async {
-        guard settings.adSchedule.isDue, await present() else { return }
+        guard Tuning.Ads.isEnabled, settings.adSchedule.isDue, await present() else { return }
         settings.registerAdShown()
     }
 

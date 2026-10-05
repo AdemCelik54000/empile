@@ -135,7 +135,8 @@ struct GameView: View {
                 HStack(alignment: .top) {
                     AdRewardButton(
                         left: session.adRewardsLeft,
-                        isEnabled: session.canEarnAbility && ads.isRewardedReady && !isWatchingAd,
+                        isEnabled: session.canEarnAbility && (ads.isRewardedReady || !Tuning.Ads.isEnabled)
+                            && !isWatchingAd,
                         action: watchAdForAbility
                     )
                     Spacer()
@@ -256,7 +257,9 @@ struct GameView: View {
         scene.prepareForPause()
         isWatchingAd = true
         Task {
-            if await ads.presentRewarded(), let won = session.earnAbility() {
+            // Without ads (testers' version), the power comes straight away.
+            let earned = Tuning.Ads.isEnabled ? await ads.presentRewarded() : true
+            if earned, let won = session.earnAbility() {
                 abilityStage = .roulette(won: won)
             }
             isWatchingAd = false
