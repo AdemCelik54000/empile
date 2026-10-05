@@ -37,7 +37,7 @@ enum Tuning {
             friction: 0.5,
             restitution: 0.06,
             linearDamping: 0.05,
-            angularDamping: 0.6
+            angularDamping: 0.4
         )
         /// Light, so it barely pushes the tower down; the bounce comes from its power, not its material.
         static let spring = Material(
@@ -45,23 +45,23 @@ enum Tuning {
             friction: 0.45,
             restitution: 0.15,
             linearDamping: 0.05,
-            angularDamping: 0.6
+            angularDamping: 0.4
         )
         /// Slippery: blocks slide on it more easily (the engine averages the two frictions in contact).
         static let glass = Material(
-            density: 1.4,
+            density: 2,
             friction: 0.15,
             restitution: 0.05,
             linearDamping: 0.05,
-            angularDamping: 0.5
+            angularDamping: 0.35
         )
         /// Very heavy and grippy: nothing slides on it. The anchor the shop sells.
         static let gold = Material(
-            density: 4,
+            density: 6,
             friction: 1,
             restitution: 0,
             linearDamping: 0.05,
-            angularDamping: 0.8
+            angularDamping: 0.6
         )
         static let platform = Material(
             density: 1,
@@ -75,12 +75,12 @@ enum Tuning {
     enum Physics {
         /// Physics bodies are this much smaller than the drawing on each side: neighbours overlap a hair,
         /// like soft pieces pressed together, and a piece fits into a gap barely as wide as itself.
-        static let bodyInset: CGFloat = 1.5
+        static let bodyInset: CGFloat = 1
         /// The outer corners of a body are cut this much, so pieces slide past edges into gaps instead of
         /// catching on them.
-        static let bodyChamfer: CGFloat = 6
+        static let bodyChamfer: CGFloat = 4
         /// Below these speeds a block counts as still.
-        static let calm = CalmThreshold(linearSpeed: 6, angularSpeed: 0.08)
+        static let calm = CalmThreshold(linearSpeed: 2, angularSpeed: 0.03)
         /// How long every block must stay still before the tower counts as stable.
         static let settleDuration: TimeInterval = 0.5
         /// Above this speed a block uses continuous collision so it can never pass through another.
