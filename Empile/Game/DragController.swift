@@ -12,7 +12,8 @@ final class DragController {
 
     private(set) var block: BlockNode?
     /// Kept in view coordinates, so the block stays under the finger while the camera moves.
-    private var fingerInView = CGPoint.zero
+    /// Where the finger is, in view coordinates.
+    private(set) var fingerInView = CGPoint.zero
     private var tracker = VelocityTracker(
         window: Tuning.Drag.velocityWindow,
         capacity: Tuning.Drag.velocitySampleCapacity

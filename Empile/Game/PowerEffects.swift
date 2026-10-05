@@ -49,7 +49,7 @@ final class PowerEffects {
             launch.spring.spend(using: textures)
             launch.spring.squash(by: -Tuning.Powers.springSquash)
             if let body = launch.block.physicsBody {
-                body.velocity.dy = max(body.velocity.dy, Tuning.Powers.springLaunchSpeed)
+                body.velocity.dy = max(body.velocity.dy, Tuning.Powers.springSpeed(forMass: body.mass))
             }
             audio.play(.springBoing, volume: Tuning.Sound.springVolume)
             haptics.play(Tuning.Haptics.springBounce, spacing: Tuning.Haptics.patternSpacing)

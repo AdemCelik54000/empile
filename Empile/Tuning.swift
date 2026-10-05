@@ -100,6 +100,8 @@ enum Tuning {
         static let clearanceAboveTower: CGFloat = 18
         /// Screen margin kept between the held block and the screen sides.
         static let sideMargin: CGFloat = 8
+        /// With the camera peeking to a side, share of the block's width that may stick out of the screen.
+        static let edgeOverhang: CGFloat = 2.0 / 3.0
         /// Share of the finger's horizontal speed given to the block when released.
         static let inheritedVelocityFactor: CGFloat = 0.25
         static let maxInheritedSpeed: CGFloat = 240
@@ -122,6 +124,14 @@ enum Tuning {
         static let maxZoomOut: CGFloat = 1
         /// How quickly the camera catches up. Lower = softer.
         static let sharpness: Double = 4
+        /// Finger at the very edge of the screen for a moment: the camera peeks to that side.
+        /// Distance from the screen side that counts as the edge, and how long the finger must stay.
+        static let edgeWidth: CGFloat = 18
+        static let edgeDwell: TimeInterval = 0.18
+        static let edgeSharpness: Double = 5
+        /// At full push: how far the camera moves sideways (screen points) and how much it zooms out.
+        static let edgePan: CGFloat = 36
+        static let edgeZoomOut: CGFloat = 0.06
     }
 
     enum Climb {
@@ -318,6 +328,19 @@ enum Tuning {
         static let glassMaxLoad = 3
         /// Upward speed given to the block that lands on a spring (≈ 3 floors high).
         static let springLaunchSpeed: CGFloat = 620
+        /// The launch speed above is for a piece this heavy (kg): a stone piece of two squares. A heavier piece
+        /// is launched less high, a lighter one a little higher.
+        static let springReferenceMass: CGFloat = 2.5 * 2 * pow(World.unit / World.pointsPerMeter, 2)
+        /// How much the weight counts: 0 = not at all, 0.5 = the speed falls with the square root of the mass.
+        static let springMassExponent: CGFloat = 0.35
+        /// Bounds of the launch speed, as a share of `springLaunchSpeed`.
+        static let springSpeedRange: ClosedRange<CGFloat> = 0.5...1.15
+
+        static func springSpeed(forMass mass: CGFloat) -> CGFloat {
+            guard mass > 0 else { return springLaunchSpeed }
+            let share = pow(springReferenceMass / mass, springMassExponent)
+            return springLaunchSpeed * share.clamped(to: springSpeedRange)
+        }
         /// How vertical the contact must be to count as landing on top (1 = straight down).
         static let springContactVerticality: CGFloat = 0.6
         /// How much the spring stretches when it fires.

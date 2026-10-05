@@ -13,6 +13,10 @@ final class CameraRig {
     )
     /// Where the camera looks, before any shake.
     private var focusY: CGFloat = 0
+    /// The zoom the framing asks for, before the sideways peek zooms out a little more.
+    private var baseScale: CGFloat = 1
+    /// -1...1: the camera peeks towards the left or the right.
+    private(set) var sidePush: CGFloat = 0
     /// Remaining shake, 0...1. Fades out over `Tuning.Juice.shakeDuration`.
     private var trauma: CGFloat = 0
     private var shakeClock: TimeInterval = 0
@@ -31,9 +35,15 @@ final class CameraRig {
         self.viewport = viewport
         let shot = framing.shot(towerTop: towerTop, platformTop: Platform.surfaceY, viewport: viewport)
         focusY = shot.centerY
+        baseScale = shot.scale
         trauma = 0
         node.position = CGPoint(x: 0, y: focusY)
-        node.setScale(shot.scale)
+        node.setScale(baseScale)
+    }
+
+    /// Peeks to a side: the camera moves over and zooms out a little. 0 is the normal view.
+    func nudge(_ push: CGFloat) {
+        sidePush = push.clamped(to: -1...1)
     }
 
     /// Changes the screen area to frame for; the camera eases to it on the next frames.
@@ -47,9 +57,10 @@ final class CameraRig {
         let shot = framing.shot(towerTop: towerTop, platformTop: Platform.surfaceY, viewport: viewport)
         let blend = Smoothing.blend(sharpness: Tuning.Camera.sharpness, deltaTime: deltaTime)
         focusY += (shot.centerY - focusY) * blend
-        node.setScale(scale + (shot.scale - scale) * blend)
+        baseScale += (shot.scale - baseScale) * blend
+        node.setScale(baseScale * (1 + Tuning.Camera.edgeZoomOut * abs(sidePush)))
         let shake = shakeOffset(deltaTime: deltaTime)
-        node.position = CGPoint(x: shake.dx, y: focusY + shake.dy)
+        node.position = CGPoint(x: shake.dx + sidePush * Tuning.Camera.edgePan * scale, y: focusY + shake.dy)
     }
 
     /// - Parameter strength: 0...1. A stronger shake replaces a weaker one still running.

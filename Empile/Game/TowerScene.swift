@@ -16,6 +16,9 @@ final class TowerScene: SKScene {
     private let tower = Tower()
     private let guide = DropGuide()
     private let drag = DragController()
+    private var edgeNudge = EdgeNudge(
+        edgeWidth: Tuning.Camera.edgeWidth, dwell: Tuning.Camera.edgeDwell, sharpness: Tuning.Camera.edgeSharpness
+    )
     private let dust: DustPool
     private let impacts: ImpactDirector
     private let powers: PowerEffects
@@ -232,6 +235,7 @@ final class TowerScene: SKScene {
         impacts.playPending(at: currentTime)
         powers.firePendingSprings(using: textures)
         react(to: tower.update(deltaTime: deltaTime, viewBottom: cameraRig.visibleRect.minY))
+        updateEdgeNudge()
         cameraRig.follow(towerTop: tower.stableTop, deltaTime: deltaTime)
         updateHeldBlock()
     }
@@ -367,6 +371,13 @@ final class TowerScene: SKScene {
 
     // MARK: - Held block
 
+    /// Finger held at the very edge of the screen: the camera peeks a little to that side.
+    private func updateEdgeNudge() {
+        let fingerX = drag.isDragging ? drag.fingerInView.x : nil
+        let push = edgeNudge.update(fingerX: fingerX, width: view?.bounds.width ?? size.width, deltaTime: deltaTime)
+        cameraRig.nudge(push)
+    }
+
     private func updateHeldBlock() {
         guard let block = drag.block else { return }
         let scale = cameraRig.scale
@@ -392,7 +403,8 @@ final class TowerScene: SKScene {
             width: visible.width - 2 * margin,
             height: visible.height - safeArea.top * scale
         )
-        return HoldZone(floorY: tower.landedTop + Tuning.Drag.clearanceAboveTower, bounds: bounds)
+        return HoldZone(floorY: tower.landedTop + Tuning.Drag.clearanceAboveTower, bounds: bounds,
+                        overhang: abs(cameraRig.sidePush) * Tuning.Drag.edgeOverhang)
     }
 
     // MARK: - Layout and appearance

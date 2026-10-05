@@ -39,4 +39,11 @@ struct HoldZoneTests {
         let narrow = HoldZone(floorY: 0, bounds: CGRect(x: 0, y: 0, width: 50, height: 500))
         #expect(narrow.clamp(CGPoint(x: 400, y: 100), size: block).x == 25)
     }
+
+    @Test func peekingLetsTwoThirdsOfTheBlockStickOut() {
+        let peeking = HoldZone(floorY: 200, bounds: zone.bounds, overhang: 2.0 / 3.0)
+        let rightmost: CGFloat = 200 - 36 + 48
+        #expect(abs(peeking.clamp(CGPoint(x: 500, y: 400), size: block).x - rightmost) < 0.001)
+        #expect(abs(peeking.clamp(CGPoint(x: -500, y: 400), size: block).x - (-200 + 36 - 48)) < 0.001)
+    }
 }
