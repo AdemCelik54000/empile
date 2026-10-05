@@ -34,7 +34,7 @@ enum Tuning {
         /// Slides a little on other pieces, like soft jelly; a well-centered piece still holds.
         static let stone = Material(
             density: 2.5,
-            friction: 0.5,
+            friction: 0.4,
             restitution: 0.06,
             linearDamping: 0.05,
             angularDamping: 0.4
@@ -42,7 +42,7 @@ enum Tuning {
         /// Light, so it barely pushes the tower down; the bounce comes from its power, not its material.
         static let spring = Material(
             density: 0.8,
-            friction: 0.45,
+            friction: 0.36,
             restitution: 0.15,
             linearDamping: 0.05,
             angularDamping: 0.4
@@ -50,7 +50,7 @@ enum Tuning {
         /// Slippery: blocks slide on it more easily (the engine averages the two frictions in contact).
         static let glass = Material(
             density: 2,
-            friction: 0.15,
+            friction: 0.12,
             restitution: 0.05,
             linearDamping: 0.05,
             angularDamping: 0.35
@@ -58,7 +58,7 @@ enum Tuning {
         /// Very heavy and grippy: nothing slides on it. The anchor the shop sells.
         static let gold = Material(
             density: 6,
-            friction: 1,
+            friction: 0.85,
             restitution: 0,
             linearDamping: 0.05,
             angularDamping: 0.6
@@ -78,7 +78,7 @@ enum Tuning {
         static let bodyInset: CGFloat = 1
         /// The outer corners of a body are cut this much, so pieces slide past edges into gaps instead of
         /// catching on them.
-        static let bodyChamfer: CGFloat = 4
+        static let bodyChamfer: CGFloat = 5
         /// Below these speeds a block counts as still.
         static let calm = CalmThreshold(linearSpeed: 2, angularSpeed: 0.03)
         /// How long every block must stay still before the tower counts as stable.
@@ -394,19 +394,19 @@ enum Tuning {
         // Squash: pieces are a little jelly-like. A landing block flattens, then wobbles back.
         static let squashEnabled = true
         /// Flattening at full strength (0.18 = 18 %).
-        static let squashMax: CGFloat = 0.18
+        static let squashMax: CGFloat = 0.22
         /// Sideways bulge relative to the flattening, so the block keeps its volume.
         static let squashWidening: CGFloat = 0.6
         /// The block that gets hit squashes this much compared to the one landing on it.
         static let struckSquashShare: CGFloat = 0.6
         /// Even soft touches make the pieces jiggle a little.
-        static let squashMinimumStrength: CGFloat = 0.03
+        static let squashMinimumStrength: CGFloat = 0.025
         static let squashCompressDuration: TimeInterval = 0.05
         /// The wobble after the squash: how many swings, how long each one lasts, and how much smaller
         /// each swing is than the previous one.
         static let wobbleCount = 4
         static let wobbleHalfPeriod: TimeInterval = 0.07
-        static let wobbleDecay: CGFloat = 0.55
+        static let wobbleDecay: CGFloat = 0.6
         /// How much a piece stretches when it is let go.
         static let dropStretch: CGFloat = 0.06
 
