@@ -303,7 +303,7 @@ enum Tuning {
     enum Ads {
         /// `false` in the version for testers (branch `sans-pub`): no ad is ever loaded or shown, and the ad
         /// button gives a power straight away. This is the only line that differs between the two branches.
-        static let isEnabled = true
+        static let isEnabled = false
         /// An ad is shown after this many finished games (lost or given up), then the count starts over.
         static let gamesPerAd = 5
         /// Google's public test unit: it always serves test ads and never earns or risks anything.
