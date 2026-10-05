@@ -237,10 +237,10 @@ enum Tuning {
         static let gust: ClosedRange<TimeInterval> = 2.8...4
         /// Push on a piece at the peak of a gust, as a share of what that piece would weigh in stone.
         /// A wide, well-built tower holds; a thin column a few pieces tall tips over; glass slides off.
-        static let pressure: CGFloat = 0.15
+        static let pressure: CGFloat = 0.05
         /// Added for each milestone past `startLevel`, up to `maxPressure`.
-        static let pressurePerLevel: CGFloat = 0.02
-        static let maxPressure: CGFloat = 0.3
+        static let pressurePerLevel: CGFloat = 0.01
+        static let maxPressure: CGFloat = 0.12
         /// Where the push lands on each piece: 0 = its middle, 1 = its top edge. Higher tips pieces over more.
         static let pushHeight: CGFloat = 0.8
         // Streaks.

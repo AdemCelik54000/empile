@@ -1,8 +1,8 @@
 import SpriteKit
 
-/// Follows the finger with the held block: offset above the fingertip, smoothed,
-/// kept above the tower, and released with part of the finger's horizontal speed.
-/// Positions come in view coordinates, from the SwiftUI gesture on the hand.
+/// Follows the finger with the held block: right above the fingertip sideways, at the height it was taken from
+/// (then following the finger up and down), smoothed, kept above the tower, and released with part of the
+/// finger's horizontal speed. Positions come in view coordinates, from the SwiftUI gesture on the world.
 @MainActor
 final class DragController {
     struct Release {
@@ -11,9 +11,11 @@ final class DragController {
     }
 
     private(set) var block: BlockNode?
-    /// Kept in view coordinates, so the block stays under the finger while the camera moves.
-    /// Where the finger is, in view coordinates.
+    /// Where the finger is, in view coordinates, so the block stays with it while the camera moves.
     private(set) var fingerInView = CGPoint.zero
+    /// How far above its usual spot over the finger the block is held, in screen points: the waiting piece
+    /// keeps its height when a finger takes it, instead of diving down to the finger.
+    private var heightOffset: CGFloat = 0
     private var tracker = VelocityTracker(
         window: Tuning.Drag.velocityWindow,
         capacity: Tuning.Drag.velocitySampleCapacity
@@ -27,6 +29,11 @@ final class DragController {
         self.block = block
         tracker.reset()
         track(to: viewPoint, time: time)
+        heightOffset = 0
+        if !snaps {
+            let usual = target(for: block, in: scene, zone: zone, cameraScale: cameraScale)
+            heightOffset = (block.position.y - usual.y) / max(cameraScale, 0.01)
+        }
         if snaps {
             block.position = target(for: block, in: scene, zone: zone, cameraScale: cameraScale)
         }
@@ -69,7 +76,7 @@ final class DragController {
 
     private func target(for block: BlockNode, in scene: SKScene, zone: HoldZone, cameraScale: CGFloat) -> CGPoint {
         let finger = scene.convertPoint(fromView: fingerInView)
-        let lift = Tuning.Drag.fingerGap * cameraScale + block.footprint.height / 2
+        let lift = (Tuning.Drag.fingerGap + heightOffset) * cameraScale + block.footprint.height / 2
         return zone.clamp(CGPoint(x: finger.x, y: finger.y + lift), size: block.footprint)
     }
 }
