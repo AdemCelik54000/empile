@@ -1,17 +1,15 @@
 import CoreGraphics
 
-/// A height milestone just reached, and the gems it gave.
+/// A height milestone just reached.
 struct Milestone: Equatable, Sendable {
     /// Height of the milestone, in floors.
     let floors: Int
-    let gems: Int
 }
 
-/// How high the tower has climbed, and which milestones that earned.
+/// How high the tower has climbed, and which milestones it passed.
 struct ClimbProgress: Equatable, Sendable {
     /// Floors between two milestones.
     let milestoneFloors: Int
-    let gemsPerMilestone: Int
     /// Current height of the still tower, in floors.
     private(set) var floors = 0
     /// Highest the tower has stood during this game.
@@ -29,7 +27,7 @@ struct ClimbProgress: Equatable, Sendable {
         bestFloors = max(bestFloors, floors)
         guard milestonesReached > before else { return [] }
         return (before + 1...milestonesReached).map {
-            Milestone(floors: $0 * milestoneFloors, gems: gemsPerMilestone)
+            Milestone(floors: $0 * milestoneFloors)
         }
     }
 

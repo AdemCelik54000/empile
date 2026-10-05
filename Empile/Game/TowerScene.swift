@@ -1,7 +1,7 @@
 import SpriteKit
 
-/// The game world: a platform, the blocks the player drags in from the hand, a camera that climbs with the tower,
-/// feedback on every impact, block powers, milestones and lost pieces.
+/// The game world: a platform, the piece waiting above the tower until a finger takes it, a camera that climbs
+/// with the tower, feedback on every impact, block powers, the rope of the pull power, milestones and lost pieces.
 ///
 /// Frame order: `update` measures the frame time, SpriteKit steps physics (reporting contacts), then
 /// `didSimulatePhysics` plays impacts and powers, reads the tower, moves the camera, and only then places
@@ -16,6 +16,9 @@ final class TowerScene: SKScene {
     private let tower = Tower()
     private let guide = DropGuide()
     private let drag = DragController()
+    /// The piece to place, waiting in the air above the tower until a finger takes it.
+    private var readyBlock: BlockNode?
+    private let rope = Rope()
     private var edgeNudge = EdgeNudge(
         edgeWidth: Tuning.Camera.edgeWidth, dwell: Tuning.Camera.edgeDwell, sharpness: Tuning.Camera.edgeSharpness
     )
@@ -78,6 +81,7 @@ final class TowerScene: SKScene {
         if drag.isDragging {
             cancelDrag()
         }
+        rope.release()
         tension.silence()
     }
 
@@ -97,73 +101,172 @@ final class TowerScene: SKScene {
         textures.preview(of: kind, shape: shape, style: style, displayScale: displayScale)
     }
 
-    // MARK: - Playing, from the hand
+    // MARK: - Touches on the world
 
-    /// A finger takes a card: from the hand, or anywhere on screen for the selected card.
-    /// Points are in view coordinates.
-    /// - Returns: Whether the block was taken: not once the game is over, nor while another finger holds one,
-    ///   nor while the last block dropped is still falling.
+    /// A finger comes down on the world. It takes the waiting piece, or while the rope is available, catches
+    /// the piece of the tower under it. Points are in view coordinates.
+    /// - Returns: Whether the touch took something: not once the game is over, nor while another finger
+    ///   holds a piece, nor while the last piece dropped is still falling.
     @discardableResult
-    func beginDrag(cardID: Card.ID, at point: CGPoint, time: TimeInterval) -> Bool {
-        guard isBuilt, !drag.isDragging, !tower.hasBlockInFlight, let card = session.pickUp(cardID) else {
+    func touchBegan(at point: CGPoint, time: TimeInterval) -> Bool {
+        guard isBuilt, !drag.isDragging, !rope.isHolding else { return false }
+        if session.isPulling {
+            return catchBlock(at: point)
+        }
+        guard !tower.hasBlockInFlight, let id = session.selectedCardID, let card = session.pickUp(id) else {
             return false
         }
-        let block = BlockNode(card: card, textures: textures)
-        block.zPosition = Layer.heldBlock
-        addChild(block)
-        drag.begin(block, at: point, time: time, in: self, zone: holdZone(), cameraScale: cameraRig.scale)
-        block.appear()
+        let (block, isNew) = takeReadyBlock(for: card)
+        drag.begin(block, at: point, time: time, in: self, zone: holdZone(), cameraScale: cameraRig.scale,
+                   snaps: isNew)
         haptics.play(Tuning.Haptics.pickup)
         audio.play(.pickup, volume: Tuning.Sound.pickupVolume)
         return true
     }
 
-    func moveDrag(to point: CGPoint, time: TimeInterval) {
-        drag.track(to: point, time: time)
+    func touchMoved(to point: CGPoint, time: TimeInterval) {
+        if rope.isHolding {
+            rope.move(fingerInView: point)
+        } else {
+            drag.track(to: point, time: time)
+        }
     }
 
-    /// - Parameter returnsToHand: The finger let go over the hand: the block goes back instead of falling.
-    func endDrag(at point: CGPoint, time: TimeInterval, returnsToHand: Bool) {
-        guard !returnsToHand else {
-            cancelDrag()
+    /// The finger lifts: the held piece drops, or the rope lets go.
+    func touchEnded(at point: CGPoint, time: TimeInterval) {
+        if rope.isHolding {
+            rope.release()
             return
         }
-        guard let release = drag.release(at: point, time: time, cameraScale: cameraRig.scale) else { return }
+        guard let release = drag.release(at: point, time: time, in: self, zone: holdZone(),
+                                         cameraScale: cameraRig.scale)
+        else { return }
         place(release.block, velocity: release.velocity)
     }
 
+    /// The held piece goes back to waiting above the tower.
     func cancelDrag() {
-        drag.cancel()?.dismiss()
+        guard let block = drag.cancel() else { return }
         guide.hide()
         session.returnHeldCard()
+        if session.isPlaying {
+            readyBlock?.dismiss()
+            readyBlock = block
+        } else {
+            block.dismiss()
+        }
     }
 
-    /// Turns the dragged block, or the selected card when nothing is dragged.
+    /// Turns the held piece, or the waiting one.
     func rotateActiveCard() {
         guard let card = session.rotateActiveCard() else { return }
         if let held = drag.block, held.cardID == card.id {
             _ = held.turnQuarter(using: textures)
+        } else if let ready = readyBlock, ready.cardID == card.id {
+            _ = ready.turnQuarter(using: textures)
         }
         haptics.play(Tuning.Haptics.turn)
         audio.play(.turn, volume: Tuning.Sound.turnVolume)
     }
 
-    /// Drops a card straight above the middle of the tower, without dragging (for VoiceOver).
-    func dropAboveTower(cardID: Card.ID) {
-        guard isBuilt, !drag.isDragging, !tower.hasBlockInFlight, let card = session.pickUp(cardID) else { return }
-        let block = BlockNode(card: card, textures: textures)
-        addChild(block)
+    /// Drops the waiting piece straight above the middle of the tower, without dragging (for VoiceOver).
+    func dropAboveTower() {
+        guard isBuilt, !drag.isDragging, !session.isPulling, !tower.hasBlockInFlight,
+              let id = session.selectedCardID, let card = session.pickUp(id)
+        else { return }
+        let (block, _) = takeReadyBlock(for: card)
         let lift = Tuning.Drag.clearanceAboveTower + block.footprint.height / 2
         block.position = CGPoint(x: Platform.frame.midX, y: tower.landedTop + lift)
         place(block, velocity: .zero)
     }
 
-    /// A bright double chime and a tap when the shop sells something.
-    func celebratePurchase() {
+    /// A bright double chime and a tap when a power is used.
+    func celebrateAbility() {
         for note in Tuning.Sound.purchaseNotes {
             audio.play(.ding, volume: Tuning.Sound.resultVolume, semitones: note)
         }
         haptics.play(Tuning.Haptics.purchase)
+    }
+
+    /// A short click, for each step of the roulette.
+    func playTick() {
+        audio.play(.turn, volume: Tuning.Sound.turnVolume)
+        haptics.play(Tuning.Haptics.turn)
+    }
+
+    /// The waiting piece, or a new one when it does not match `card`.
+    private func takeReadyBlock(for card: Card) -> (block: BlockNode, isNew: Bool) {
+        if let ready = readyBlock, ready.cardID == card.id {
+            readyBlock = nil
+            ready.alpha = 1
+            return (ready, false)
+        }
+        readyBlock?.dismiss()
+        readyBlock = nil
+        let block = makeBlock(card)
+        block.appear()
+        return (block, true)
+    }
+
+    private func makeBlock(_ card: Card) -> BlockNode {
+        let block = BlockNode(card: card, textures: textures)
+        block.zPosition = Layer.heldBlock
+        addChild(block)
+        return block
+    }
+
+    /// Ties the rope to the piece of the tower under the finger, if any.
+    private func catchBlock(at viewPoint: CGPoint) -> Bool {
+        let point = convertPoint(fromView: viewPoint)
+        let reach = Tuning.Abilities.pullCatchRadius * cameraRig.scale
+        let catchable = tower.blocks.filter { !$0.isFrozen && !$0.hasFallenOff && $0.physicsBody != nil }
+        var caught = (physicsWorld.body(at: point)?.node as? BlockNode).flatMap { hit in
+            catchable.contains { $0 === hit } ? hit : nil
+        }
+        if caught == nil {
+            caught = catchable
+                .map { block in (block: block, distance: block.placement.distance(to: point)) }
+                .filter { $0.distance <= reach }
+                .min { $0.distance < $1.distance }?.block
+        }
+        guard let caught else { return false }
+        rope.attach(to: caught, at: point, fingerInView: viewPoint)
+        haptics.play(Tuning.Haptics.pickup)
+        audio.play(.pickup, volume: Tuning.Sound.pickupVolume)
+        return true
+    }
+
+    /// The waiting piece follows the tower, changes when the piece to place changes, and fades while the rope
+    /// is out (it cannot be taken then).
+    private func updateReadyBlock() {
+        let card = session.isPlaying && !drag.isDragging ? session.activeCard : nil
+        if let ready = readyBlock {
+            let isStale = card.map {
+                ready.cardID != $0.id || ready.definition.kind != $0.kind || ready.finalShape != $0.shape
+            } ?? true
+            if isStale {
+                ready.dismiss()
+                readyBlock = nil
+            }
+        }
+        guard let card else { return }
+        let zone = holdZone()
+        if readyBlock == nil {
+            let block = makeBlock(card)
+            block.position = restingPoint(for: block, in: zone)
+            block.appear()
+            readyBlock = block
+        }
+        guard let ready = readyBlock else { return }
+        ready.position = Smoothing.approach(ready.position, to: restingPoint(for: ready, in: zone),
+                                            sharpness: Tuning.Drag.readySharpness, deltaTime: deltaTime)
+        ready.alpha = session.isPulling ? 0.35 : 1
+    }
+
+    private func restingPoint(for block: BlockNode, in zone: HoldZone) -> CGPoint {
+        let center = CGPoint(x: Platform.frame.midX,
+                             y: zone.floorY + Tuning.Drag.readyLift + block.footprint.height / 2)
+        return zone.clamp(center, size: block.footprint)
     }
 
     func startNewGame() {
@@ -185,6 +288,9 @@ final class TowerScene: SKScene {
 
     private func clearWorld() {
         drag.cancel()?.removeFromParent()
+        readyBlock?.removeFromParent()
+        readyBlock = nil
+        rope.release()
         guide.hide()
         powers.reset()
         tension.silence()
@@ -209,7 +315,7 @@ final class TowerScene: SKScene {
         sky.zPosition = Layer.background
         cameraRig.node.addChild(sky)
         cameraRig.node.addChild(windEffect.node)
-        for node in [platform.node, guide.node, dust.node, powers.node, bird.node, effects.node] {
+        for node in [platform.node, guide.node, dust.node, powers.node, bird.node, effects.node, rope.node] {
             addChild(node)
         }
         refreshAppearance()
@@ -229,6 +335,13 @@ final class TowerScene: SKScene {
         deltaTime = elapsed.clamped(to: 0...Tuning.Display.maxFrameDuration)
         physicsWorld.speed = Tuning.Physics.simulationSpeed * slowMotion.speed(at: currentTime)
         blow()
+        if !isPaused {
+            session.tickPull(deltaTime)
+        }
+        if !session.isPulling {
+            rope.release()
+        }
+        rope.pull(in: self, deltaTime: deltaTime)
     }
 
     override func didSimulatePhysics() {
@@ -237,7 +350,9 @@ final class TowerScene: SKScene {
         react(to: tower.update(deltaTime: deltaTime, viewBottom: cameraRig.visibleRect.minY))
         updateEdgeNudge()
         cameraRig.follow(towerTop: tower.stableTop, deltaTime: deltaTime)
+        updateReadyBlock()
         updateHeldBlock()
+        rope.draw(in: self, cameraScale: cameraRig.scale)
     }
 
     // MARK: - Climb
@@ -436,6 +551,8 @@ final class TowerScene: SKScene {
         bird.refresh(using: textures)
         effects.refresh(using: textures)
         drag.block?.refreshTexture(using: textures)
+        readyBlock?.refreshTexture(using: textures)
+        rope.refresh(using: textures)
         for block in tower.blocks {
             block.refreshTexture(using: textures)
         }

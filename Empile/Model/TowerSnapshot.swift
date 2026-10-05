@@ -32,6 +32,22 @@ struct PlacedShape: Equatable, Sendable {
         }
     }
 
+    /// Distance from `point` to the nearest square of the piece: 0 when the point is on the piece.
+    func distance(to point: CGPoint) -> CGFloat {
+        let cosine = cos(rotation)
+        let sine = sin(rotation)
+        let half = unit / 2
+        return shape.cells.reduce(CGFloat.infinity) { nearest, cell in
+            let cellCenter = center(of: cell)
+            let dx = point.x - cellCenter.x
+            let dy = point.y - cellCenter.y
+            // In the square's own frame, where its sides are straight.
+            let along = abs(dx * cosine + dy * sine) - half
+            let across = abs(-dx * sine + dy * cosine) - half
+            return min(nearest, hypot(max(along, 0), max(across, 0)))
+        }
+    }
+
     /// Highest point of the piece over a horizontal span, or `nil` when the span misses it.
     func surfaceTop(over span: ClosedRange<CGFloat>) -> CGFloat? {
         var highest: CGFloat?

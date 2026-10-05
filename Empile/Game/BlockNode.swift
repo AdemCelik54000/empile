@@ -68,6 +68,9 @@ final class BlockNode: SKNode {
 
     var topY: CGFloat { frozenTop ?? placement.topY }
 
+    /// The shape once a quarter turn still in progress is over.
+    var finalShape: BlockShape { pendingTurn?.shape ?? shape }
+
     var isSettled: Bool { frozenTop != nil || settleTimer.isSettled }
     var isFrozen: Bool { frozenTop != nil }
 

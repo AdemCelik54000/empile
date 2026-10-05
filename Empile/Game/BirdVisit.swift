@@ -73,7 +73,8 @@ final class BirdVisit {
             node.position = target
             node.zRotation = perch.zRotation
             perch.wake()
-            perch.physicsBody?.applyForce(CGVector(dx: 0, dy: -Tuning.Birds.weight), at: target)
+            perch.physicsBody?.applyForce(CGVector(dx: 0, dy: -Tuning.Birds.weight * PhysicsUnits.pointsPerNewton),
+                                          at: target)
         case .leaving:
             let progress = CGFloat(schedule.progress)
             node.position = flightStart.interpolated(to: flightEnd, by: progress * progress)

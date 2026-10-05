@@ -21,12 +21,15 @@ final class DragController {
 
     var isDragging: Bool { block != nil }
 
+    /// - Parameter snaps: Puts the block under the finger at once; otherwise it glides there.
     func begin(_ block: BlockNode, at viewPoint: CGPoint, time: TimeInterval, in scene: SKScene, zone: HoldZone,
-               cameraScale: CGFloat) {
+               cameraScale: CGFloat, snaps: Bool) {
         self.block = block
         tracker.reset()
         track(to: viewPoint, time: time)
-        block.position = target(for: block, in: scene, zone: zone, cameraScale: cameraScale)
+        if snaps {
+            block.position = target(for: block, in: scene, zone: zone, cameraScale: cameraScale)
+        }
     }
 
     func track(to viewPoint: CGPoint, time: TimeInterval) {
@@ -45,9 +48,13 @@ final class DragController {
         )
     }
 
-    func release(at viewPoint: CGPoint, time: TimeInterval, cameraScale: CGFloat) -> Release? {
+    /// Lets go of the block right under the finger, even if it had not caught up yet (a quick tap on a side
+    /// drops it on that side, not where it was gliding from).
+    func release(at viewPoint: CGPoint, time: TimeInterval, in scene: SKScene, zone: HoldZone,
+                 cameraScale: CGFloat) -> Release? {
         guard let block else { return nil }
         track(to: viewPoint, time: time)
+        block.position = target(for: block, in: scene, zone: zone, cameraScale: cameraScale)
         self.block = nil
         let fingerSpeed = tracker.velocity.dx * cameraScale
         let limit = Tuning.Drag.maxInheritedSpeed

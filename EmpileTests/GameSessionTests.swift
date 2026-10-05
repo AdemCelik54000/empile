@@ -20,10 +20,6 @@ struct GameSessionTests {
         session.placeHeldCard()
     }
 
-    private func earnGems(_ session: GameSession, milestones: Int) {
-        session.reportHeight(milestones * Tuning.Climb.milestoneFloors)
-    }
-
     @Test func aGameStartsWithAFullHandAndEveryLife() {
         let session = makeSession()
         #expect(session.phase == .playing)
@@ -31,7 +27,18 @@ struct GameSessionTests {
         #expect(Set(session.hand.map(\.id)).count == 3)
         #expect(session.selectedCardID == session.hand.first?.id)
         #expect(session.lives == 3)
-        #expect(session.gems == 0)
+        for ability in Ability.allCases {
+            #expect(session.abilities.count(of: ability) == Tuning.Abilities.startingCount)
+        }
+        #expect(session.adRewardsLeft == Tuning.Abilities.adRewardsPerGame)
+    }
+
+    @Test func theReserveIsEveryPieceButTheOneToPlace() {
+        let session = makeSession()
+        #expect(session.reserve.map(\.id) == [1, 2])
+        session.select(2)
+        #expect(session.selectedCardID == 2)
+        #expect(session.reserve.map(\.id) == [0, 1])
     }
 
     @Test func aPlacedPieceIsReplacedAtOnceInItsSlot() {
@@ -76,17 +83,14 @@ struct GameSessionTests {
         #expect(session.rotateActiveCard() == nil)
     }
 
-    @Test func eachMilestonePaysGemsOnce() {
+    @Test func eachMilestoneIsReachedOnce() {
         let session = makeSession()
         let floors = Tuning.Climb.milestoneFloors
         #expect(session.reportHeight(floors - 1).isEmpty)
-        let first = session.reportHeight(floors)
-        #expect(first == [Milestone(floors: floors, gems: Tuning.Climb.milestoneGems)])
-        #expect(session.gems == Tuning.Climb.milestoneGems)
-        // The tower shrinks, then climbs back: no second payment.
+        #expect(session.reportHeight(floors) == [Milestone(floors: floors)])
+        // The tower shrinks, then climbs back: no second milestone.
         session.reportHeight(floors - 2)
         #expect(session.reportHeight(floors).isEmpty)
-        #expect(session.gems == Tuning.Climb.milestoneGems)
         #expect(session.lastMilestone?.floors == floors)
     }
 
@@ -94,7 +98,6 @@ struct GameSessionTests {
         let session = makeSession()
         let passed = session.reportHeight(Tuning.Climb.milestoneFloors * 2 + 1)
         #expect(passed.count == 2)
-        #expect(session.gems == 2 * Tuning.Climb.milestoneGems)
         #expect(session.climb.nextMilestone == 3 * Tuning.Climb.milestoneFloors)
     }
 
@@ -106,65 +109,97 @@ struct GameSessionTests {
         session.loseLife()
         #expect(session.phase == .gameOver)
         #expect(session.pickUp(session.hand[0].id) == nil)
-        session.reportHeight(Tuning.Climb.milestoneFloors)
-        #expect(session.gems == 0)
+        #expect(session.reportHeight(Tuning.Climb.milestoneFloors).isEmpty)
+        #expect(!session.canUse(.extraLife))
     }
 
     @Test func aNewGameStartsFromScratch() {
         let session = makeSession()
-        earnGems(session, milestones: 2)
+        session.reportHeight(2 * Tuning.Climb.milestoneFloors)
         session.loseLife()
+        session.useExtraLife()
+        session.startPull()
+        session.earnAbility()
         place(session, session.hand[0].id)
         session.startNewGame()
         #expect(session.phase == .playing)
         #expect(session.lives == 3)
-        #expect(session.gems == 0)
+        #expect(session.abilities == AbilityStock(each: Tuning.Abilities.startingCount))
+        #expect(session.adRewardsLeft == Tuning.Abilities.adRewardsPerGame)
+        #expect(!session.isPulling)
         #expect(session.climb.bestFloors == 0)
         #expect(session.lastMilestone == nil)
         #expect(session.hand.map(\.id) == [0, 1, 2])
     }
 
-    @Test func changingMaterialCostsGemsAndChangesOnlyTheSelectedPiece() {
+    @Test func changingMaterialUsesThePowerAndChangesOnlyThatPiece() {
         let session = makeSession(supply: barsOnly)
-        #expect(!session.canChangeMaterial)
-        earnGems(session, milestones: 1)
         let before = session.hand
-        session.select(before[2].id)
-        #expect(session.changeSelectedMaterial())
+        #expect(session.change(before[2].id, with: .rematerial))
         #expect(session.hand[0] == before[0])
         #expect(session.hand[1] == before[1])
         #expect(session.hand[2].id == before[2].id)
         #expect(session.hand[2].shape == before[2].shape)
         #expect(session.hand[2].kind != before[2].kind)
-        #expect(session.gems == Tuning.Climb.milestoneGems - Tuning.Shop.rematerialPrice)
+        #expect(session.abilities.count(of: .rematerial) == 0)
+        #expect(!session.change(before[0].id, with: .rematerial))
     }
 
     @Test func reshapingGivesAnotherShapeAndKeepsTheMaterial() {
         let session = makeSession()
-        earnGems(session, milestones: 1)
         let before = session.hand[0]
-        #expect(session.reshapeSelected())
+        #expect(session.change(before.id, with: .reshape))
         #expect(session.hand[0].id == before.id)
         #expect(session.hand[0].kind == before.kind)
         #expect(session.hand[0].shape.family != before.shape.family)
+        #expect(session.abilities.count(of: .reshape) == 0)
     }
 
-    @Test func aLifeCanOnlyBeBoughtBackWhenOneIsMissing() {
+    @Test func onlyShapeAndMaterialPowersChangeAPiece() {
         let session = makeSession()
-        let milestonesForALife = (Tuning.Shop.lifePrice + Tuning.Climb.milestoneGems - 1) / Tuning.Climb.milestoneGems
-        earnGems(session, milestones: milestonesForALife)
-        #expect(!session.canBuyLife)
-        session.loseLife()
-        #expect(session.buyLife())
-        #expect(session.lives == 3)
+        #expect(!session.change(session.hand[0].id, with: .pull))
+        #expect(session.abilities.count(of: .pull) == 1)
     }
 
-    @Test func nothingIsBoughtWhileAPieceIsHeld() {
+    @Test func theLifePowerAddsALifeUpToTheLimit() {
         let session = makeSession()
-        earnGems(session, milestones: 2)
+        #expect(session.useExtraLife())
+        #expect(session.lives == 4)
+        #expect(!session.useExtraLife())
+        let full = makeSession(lives: Tuning.Abilities.maxLives)
+        #expect(!full.canUse(.extraLife))
+    }
+
+    @Test func theRopeLastsItsTimeThenEnds() {
+        let session = makeSession()
+        #expect(session.startPull())
+        #expect(session.pullTimeLeft == Tuning.Abilities.pullDuration)
+        #expect(!session.canUse(.pull))
+        session.tickPull(Tuning.Abilities.pullDuration - 0.25)
+        #expect(session.pullTimeLeft == 0.3)
+        session.tickPull(0.3)
+        #expect(session.pullTimeLeft == nil)
+        #expect(!session.startPull())
+    }
+
+    @Test func noPowerWhileAPieceIsHeld() {
+        let session = makeSession()
         _ = session.pickUp(session.hand[0].id)
-        #expect(!session.canChangeMaterial)
-        #expect(!session.reshapeSelected())
+        for ability in Ability.allCases {
+            #expect(!session.canUse(ability))
+        }
+        #expect(!session.change(session.hand[1].id, with: .reshape))
+    }
+
+    @Test func eachAdGivesOnePowerUntilNoneAreLeft() throws {
+        let session = makeSession()
+        for left in stride(from: Tuning.Abilities.adRewardsPerGame - 1, through: 0, by: -1) {
+            let won = try #require(session.earnAbility())
+            #expect(session.abilities.count(of: won) >= Tuning.Abilities.startingCount + 1)
+            #expect(session.adRewardsLeft == left)
+        }
+        #expect(!session.canEarnAbility)
+        #expect(session.earnAbility() == nil)
     }
 }
 
@@ -223,7 +258,7 @@ struct ClimbProgressTests {
     }
 
     @Test func theBestHeightNeverGoesDown() {
-        var climb = ClimbProgress(milestoneFloors: 5, gemsPerMilestone: 3)
+        var climb = ClimbProgress(milestoneFloors: 5)
         _ = climb.reach(7)
         _ = climb.reach(4)
         #expect(climb.floors == 4)
@@ -409,25 +444,5 @@ struct ScoreTests {
         #expect(session.score == first.points + second.points)
         session.loseLife()
         #expect(session.combo.streak == 0)
-    }
-
-    @MainActor
-    @Test func aLostGameCanBeContinuedOnceWithEveryLifeBack() {
-        let session = GameSession(seed: 1, lives: 2)
-        session.scorePlacement(kind: .stone, shape: .square, quality: .good)
-        let score = session.score
-        session.loseLife()
-        session.loseLife()
-        #expect(session.canContinue)
-        session.continueAfterAd()
-        #expect(session.phase == .playing)
-        #expect(session.lives == 2)
-        #expect(session.score == score)
-        session.loseLife()
-        session.loseLife()
-        #expect(!session.canContinue)
-        session.startNewGame()
-        #expect(session.score == 0)
-        #expect(session.continuesUsed == 0)
     }
 }

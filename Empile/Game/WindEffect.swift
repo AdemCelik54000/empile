@@ -61,7 +61,7 @@ final class WindEffect {
             block.wake()
             // `area × density` is exactly how the engine computes mass, whatever its units.
             let stoneWeight = body.area * stoneDensity * gravity
-            let force = pressure * wind.strength * stoneWeight * wind.direction
+            let force = pressure * wind.strength * stoneWeight * wind.direction * PhysicsUnits.pointsPerNewton
             let lift = block.footprint.height / 2 * Tuning.Wind.pushHeight
             let point = scene.convert(CGPoint(x: 0, y: lift), from: block)
             body.applyForce(CGVector(dx: force, dy: 0), at: point)

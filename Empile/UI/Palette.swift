@@ -25,8 +25,6 @@ enum Palette {
     static let gold = UIColor(light: UIColor(hex: 0xE3B23C), dark: UIColor(hex: 0xEDC25A))
     /// Glass shards, more opaque than the block so they read as sparkles.
     static let shard = UIColor(light: UIColor(hex: 0xBFE6F3), dark: UIColor(hex: 0xA6DCEE))
-    /// Gems, the shop's currency.
-    static let gem = UIColor(light: UIColor(hex: 0x1F9DC4), dark: UIColor(hex: 0x5CCDF0))
     /// The game's accent, for buttons and highlights in the interface.
     /// Floating points: dark over the light sky, light over the night sky.
     static let scoreText = UIColor.label

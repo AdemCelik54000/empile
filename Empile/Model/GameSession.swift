@@ -4,8 +4,9 @@ import Observation
 /// The state of a game, shared by the scene (which plays it) and SwiftUI (which shows it).
 /// It knows nothing about physics: the scene reports what happened, the session applies the rules.
 ///
-/// One tower, built higher and higher. Each placed piece is replaced at once by a new one; every few floors
-/// a milestone gives gems to spend in the shop; each piece lost costs a life.
+/// One tower, built higher and higher. The piece to place waits on screen, two more wait in reserve; each placed
+/// piece is replaced at once by a new one. Every few floors a milestone makes the game harder; each piece lost
+/// costs a life. Powers (one of each to start, more from ads) can be used at any time.
 @MainActor
 @Observable
 final class GameSession {
@@ -15,12 +16,16 @@ final class GameSession {
     }
 
     private(set) var phase = Phase.playing
-    /// The pieces the player can choose from, including the one being dragged.
+    /// The piece to place (the selected one) and the reserve, including the one being dragged.
     private(set) var hand: [Card] = []
     private(set) var heldCardID: Card.ID?
     private(set) var selectedCardID: Card.ID?
     private(set) var lives: Int
-    private(set) var gems = 0
+    private(set) var abilities = AbilityStock(each: Tuning.Abilities.startingCount)
+    /// Ads the player may still watch this game, each one for a power.
+    private(set) var adRewardsLeft = Tuning.Abilities.adRewardsPerGame
+    /// While the rope is available: the seconds left, in tenths.
+    private(set) var pullTimeLeft: TimeInterval?
     private(set) var climb: ClimbProgress
     /// The latest milestone reached, for the banner.
     private(set) var lastMilestone: Milestone?
@@ -29,14 +34,14 @@ final class GameSession {
     /// Points earned this game: every piece placed, multiplied by the combo.
     private(set) var score = 0
     private(set) var combo = Combo()
-    /// Times this game was continued after watching an ad.
-    private(set) var continuesUsed = 0
 
     @ObservationIgnored private let startingSupply: PieceSupply
     @ObservationIgnored private var supply: PieceSupply
     @ObservationIgnored private let handSize: Int
     @ObservationIgnored private let startingLives: Int
     @ObservationIgnored private var generator: SeededGenerator
+    /// The exact time left on the rope; `pullTimeLeft` only changes every tenth of a second.
+    @ObservationIgnored private var pullClock: TimeInterval = 0
 
     init(
         seed: UInt64 = .random(in: .min ... .max),
@@ -50,14 +55,16 @@ final class GameSession {
         startingLives = lives
         self.lives = lives
         generator = SeededGenerator(seed: seed)
-        climb = ClimbProgress(milestoneFloors: Tuning.Climb.milestoneFloors, gemsPerMilestone: Tuning.Climb.milestoneGems)
+        climb = ClimbProgress(milestoneFloors: Tuning.Climb.milestoneFloors)
         refillHand()
     }
 
     var isPlaying: Bool { phase == .playing }
     var maxLives: Int { startingLives }
-    /// The card the rotate button and the shop act on: the one being dragged, otherwise the selected one.
+    /// The card the rotate button acts on: the one being dragged, otherwise the selected one.
     var activeCard: Card? { hand.first { $0.id == (heldCardID ?? selectedCardID) } }
+    /// The pieces waiting in reserve, in the order they are shown.
+    var reserve: [Card] { hand.filter { $0.id != selectedCardID } }
     var canRotate: Bool { isPlaying && !(activeCard?.shape.isTurnInvariant ?? true) }
 
     // MARK: - Game
@@ -65,13 +72,14 @@ final class GameSession {
     func startNewGame() {
         supply = startingSupply
         lives = startingLives
-        gems = 0
-        climb = ClimbProgress(milestoneFloors: climb.milestoneFloors, gemsPerMilestone: climb.gemsPerMilestone)
+        abilities = AbilityStock(each: Tuning.Abilities.startingCount)
+        adRewardsLeft = Tuning.Abilities.adRewardsPerGame
+        endPull()
+        climb = ClimbProgress(milestoneFloors: climb.milestoneFloors)
         lastMilestone = nil
         windAlert = nil
         score = 0
         combo = Combo()
-        continuesUsed = 0
         hand = []
         heldCardID = nil
         phase = .playing
@@ -79,14 +87,11 @@ final class GameSession {
     }
 
     /// The still tower now stands this many floors high.
-    /// - Returns: The milestones it just passed, each already paid in gems.
+    /// - Returns: The milestones it just passed.
     @discardableResult
     func reportHeight(_ floors: Int) -> [Milestone] {
         guard isPlaying else { return [] }
         let reached = climb.reach(floors)
-        for milestone in reached {
-            gems += milestone.gems
-        }
         if let last = reached.last {
             lastMilestone = last
         }
@@ -117,17 +122,6 @@ final class GameSession {
         return placement
     }
 
-    /// The game can go on once more, with every life back, by watching an ad.
-    var canContinue: Bool { phase == .gameOver && continuesUsed < Tuning.Ads.continuesPerGame }
-
-    /// Every life back, the tower and the score as they were.
-    func continueAfterAd() {
-        guard canContinue else { return }
-        continuesUsed += 1
-        lives = startingLives
-        phase = .playing
-    }
-
     /// A piece fell out of the tower: a life is lost and the combo breaks.
     func loseLife() {
         guard isPlaying else { return }
@@ -135,12 +129,14 @@ final class GameSession {
         lives = max(0, lives - 1)
         if lives == 0 {
             heldCardID = nil
+            endPull()
             phase = .gameOver
         }
     }
 
     // MARK: - Building
 
+    /// Makes a piece of the reserve the one to place; the one it replaces goes to the reserve.
     func select(_ id: Card.ID) {
         guard isPlaying, heldCardID == nil, hand.contains(where: { $0.id == id }) else { return }
         selectedCardID = id
@@ -175,45 +171,81 @@ final class GameSession {
         selectedCardID = hand[index].id
     }
 
-    // MARK: - Shop
+    // MARK: - Powers
 
-    var canChangeMaterial: Bool { canSpend(Tuning.Shop.rematerialPrice) && activeCard != nil }
-    var canReshape: Bool { canSpend(Tuning.Shop.reshapePrice) && activeCard != nil }
-    var canBuyLife: Bool { canSpend(Tuning.Shop.lifePrice) && lives < startingLives }
+    /// Whether a power can be used now: one is left, a game is on, nothing is in the player's fingers.
+    func canUse(_ ability: Ability) -> Bool {
+        guard isPlaying, heldCardID == nil, abilities.count(of: ability) > 0 else { return false }
+        switch ability {
+        case .reshape, .rematerial: return true
+        case .pull: return pullTimeLeft == nil
+        case .extraLife: return lives < Tuning.Abilities.maxLives
+        }
+    }
 
-    /// Gives the selected piece another material, picked at random.
+    /// Gives a piece another shape (`.reshape`) or a random material (`.rematerial`).
+    /// - Returns: Whether the power was used.
     @discardableResult
-    func changeSelectedMaterial() -> Bool {
-        guard canChangeMaterial, let index = activeIndex else { return false }
-        gems -= Tuning.Shop.rematerialPrice
-        hand[index] = supply.rematerialized(hand[index], using: &generator)
+    func change(_ id: Card.ID, with ability: Ability) -> Bool {
+        guard ability.needsPiece, canUse(ability), let index = hand.firstIndex(where: { $0.id == id }),
+              abilities.use(ability)
+        else { return false }
+        hand[index] = ability == .reshape
+            ? supply.reshaped(hand[index], using: &generator)
+            : supply.rematerialized(hand[index], using: &generator)
         return true
     }
 
-    /// Gives the selected piece another shape.
+    /// - Returns: Whether the power was used.
     @discardableResult
-    func reshapeSelected() -> Bool {
-        guard canReshape, let index = activeIndex else { return false }
-        gems -= Tuning.Shop.reshapePrice
-        hand[index] = supply.reshaped(hand[index], using: &generator)
-        return true
-    }
-
-    @discardableResult
-    func buyLife() -> Bool {
-        guard canBuyLife else { return false }
-        gems -= Tuning.Shop.lifePrice
+    func useExtraLife() -> Bool {
+        guard canUse(.extraLife), abilities.use(.extraLife) else { return false }
         lives += 1
         return true
     }
 
-    private var activeIndex: Int? {
-        activeCard.flatMap { card in hand.firstIndex { $0.id == card.id } }
+    /// The rope is available for `Tuning.Abilities.pullDuration` seconds.
+    /// - Returns: Whether the power was used.
+    @discardableResult
+    func startPull() -> Bool {
+        guard canUse(.pull), abilities.use(.pull) else { return false }
+        pullClock = Tuning.Abilities.pullDuration
+        pullTimeLeft = pullClock
+        return true
     }
 
-    /// Nothing is bought while a piece is in the player's fingers.
-    private func canSpend(_ price: Int) -> Bool {
-        isPlaying && heldCardID == nil && gems >= price
+    /// Time passes for the rope, while the game runs.
+    func tickPull(_ deltaTime: TimeInterval) {
+        guard pullTimeLeft != nil else { return }
+        pullClock -= max(0, deltaTime)
+        guard pullClock > 0 else {
+            endPull()
+            return
+        }
+        let shown = (pullClock * 10).rounded(.up) / 10
+        if shown != pullTimeLeft {
+            pullTimeLeft = shown
+        }
+    }
+
+    var isPulling: Bool { pullTimeLeft != nil }
+
+    /// Whether an ad can still be watched for a power this game.
+    var canEarnAbility: Bool { isPlaying && adRewardsLeft > 0 }
+
+    /// The player watched an ad through: one power drawn at random joins the stock.
+    /// - Returns: The power won, or `nil` when no ad reward is left.
+    @discardableResult
+    func earnAbility() -> Ability? {
+        guard canEarnAbility, let won = Ability.allCases.randomElement(using: &generator) else { return nil }
+        adRewardsLeft -= 1
+        abilities.add(won)
+        return won
+    }
+
+    private func endPull() {
+        pullClock = 0
+        pullTimeLeft = nil
     }
 
     private func refillHand() {

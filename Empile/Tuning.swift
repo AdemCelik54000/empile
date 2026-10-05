@@ -98,6 +98,10 @@ enum Tuning {
         static let followSharpness: Double = 30
         /// Minimum gap between the held block and the top of the tower.
         static let clearanceAboveTower: CGFloat = 18
+        /// The next piece waits in the air this far above the tower, until a finger takes it.
+        static let readyLift: CGFloat = 150
+        /// How quickly the waiting piece follows the tower as it grows.
+        static let readySharpness: Double = 6
         /// Screen margin kept between the held block and the screen sides.
         static let sideMargin: CGFloat = 8
         /// With the camera peeking to a side, share of the block's width that may stick out of the screen.
@@ -138,9 +142,8 @@ enum Tuning {
         static let lives = 3
         /// Pieces to choose from; each one placed is replaced at once.
         static let handSize = 3
-        /// Floors between two milestones, and the gems each one gives.
+        /// Floors between two milestones: each one raises the difficulty.
         static let milestoneFloors = 5
-        static let milestoneGems = 3
         /// A piece out of sight below the screen that falls faster than this is lost; a still one is frozen.
         static let lostFallSpeed: CGFloat = 120
         /// How quickly the pieces of a finished game fade away.
@@ -234,10 +237,10 @@ enum Tuning {
         static let gust: ClosedRange<TimeInterval> = 2.8...4
         /// Push on a piece at the peak of a gust, as a share of what that piece would weigh in stone.
         /// A wide, well-built tower holds; a thin column a few pieces tall tips over; glass slides off.
-        static let pressure: CGFloat = 0.6
+        static let pressure: CGFloat = 0.15
         /// Added for each milestone past `startLevel`, up to `maxPressure`.
-        static let pressurePerLevel: CGFloat = 0.05
-        static let maxPressure: CGFloat = 1.05
+        static let pressurePerLevel: CGFloat = 0.02
+        static let maxPressure: CGFloat = 0.3
         /// Where the push lands on each piece: 0 = its middle, 1 = its top edge. Higher tips pieces over more.
         static let pushHeight: CGFloat = 0.8
         // Streaks.
@@ -306,21 +309,47 @@ enum Tuning {
         /// and developers never click real ads. The app ID (`ca-app-pub-8817900109973306~3491063497`) is in
         /// `Info.plist`, key `GADApplicationIdentifier`.
         static let liveInterstitialUnitID = "ca-app-pub-8817900109973306/8276486310"
-        /// Google's public test unit for ads watched for a reward (here: continuing a lost game).
+        /// Google's public test unit for ads watched for a reward (here: a power drawn at random).
         static let testRewardedUnitID = "ca-app-pub-3940256099942544/1712485313"
-        /// The real rewarded unit of the AdMob account; until it exists, the App Store version offers no
-        /// "continue" (test ads must never show there).
+        /// The real rewarded unit of the AdMob account; until it exists, the App Store version cannot offer
+        /// powers for ads (test ads must never show there).
         static let liveRewardedUnitID: String? = nil
-        /// Times a game can be continued by watching an ad.
-        static let continuesPerGame = 1
     }
 
-    enum Shop {
-        /// Give the selected piece another, random material.
-        static let rematerialPrice = 2
-        /// Give the selected piece another shape.
-        static let reshapePrice = 1
-        static let lifePrice = 8
+    enum Abilities {
+        /// Of each power, at the start of a game.
+        static let startingCount = 1
+        /// Ads the player may watch per game, each one for a power drawn at random.
+        static let adRewardsPerGame = 3
+        /// The "one more life" power cannot raise the lives above this.
+        static let maxLives = 5
+        /// How long the rope stays available once the power is used.
+        static let pullDuration: TimeInterval = 10
+        /// Pull on the roped piece: acceleration per point of rope length (1/s²). The further the finger, the
+        /// harder the pull.
+        static let pullStiffness: CGFloat = 32
+        /// Slows the roped piece down so it does not swing forever (1/s).
+        static let pullDamping: CGFloat = 10
+        /// Strongest acceleration the rope gives, in points per second².
+        static let maxPullAcceleration: CGFloat = 4500
+        /// The roped piece never moves faster than this (points per second), so it cannot be flung off screen.
+        static let maxPullSpeed: CGFloat = 900
+        /// A touch this close to a piece (screen points) still catches it.
+        static let pullCatchRadius: CGFloat = 14
+        /// The rope gets thinner as it stretches: width when slack, thinnest width, and the length that
+        /// makes it lose one point of width.
+        static let ropeWidth: CGFloat = 5
+        static let ropeMinWidth: CGFloat = 1.5
+        static let ropeThinningLength: CGFloat = 70
+        /// How long the power's icon takes the stage when it is used, before it acts.
+        static let activationDuration: TimeInterval = 0.75
+        /// How long the changed piece stays on display after a shape or material change.
+        static let changeDisplayDuration: TimeInterval = 0.6
+        /// The roulette: how many full turns before it slows down, and the delay between two steps,
+        /// first to last.
+        static let rouletteTurns = 3
+        static let rouletteStepDelay: ClosedRange<Double> = 0.05...0.32
+        static let rouletteResultDuration: TimeInterval = 1.2
     }
 
     enum Powers {

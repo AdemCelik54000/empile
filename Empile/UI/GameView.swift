@@ -1,9 +1,10 @@
 import SpriteKit
 import SwiftUI
 
-/// The game screen: the SpriteKit world full screen, the climb header on top and the hand (or the end of the
-/// game) at the bottom. Touching the world places the selected piece; the world keeps clear of the interface.
-/// The shop opens over the frozen world at any time.
+/// The game screen: the SpriteKit world full screen, the climb header on top with the ad for a power on the
+/// left and the reserve on the right, and the powers (or the end of the game) at the bottom. Touching the world
+/// takes the waiting piece; the world keeps clear of the interface. Using a power freezes the world while it
+/// takes the stage.
 struct GameView: View {
     let session: GameSession
     let scene: TowerScene
@@ -13,11 +14,13 @@ struct GameView: View {
     let onPause: () -> Void
     let onHome: () -> Void
     @State private var headerBottom: CGFloat = 0
-    @State private var bottomPanelFrame = CGRect.zero
     /// Top of everything drawn at the bottom (hint included): the world keeps clear below it.
     @State private var bottomAreaTop: CGFloat = 0
     @State private var screenHeight: CGFloat = 0
-    @State private var isShopOpen = false
+    /// A power on stage over the frozen world.
+    @State private var abilityStage: AbilityStage?
+    /// An ad for a power is on screen, or about to be.
+    @State private var isWatchingAd = false
     @State private var bannerMilestone: Milestone?
     @State private var isNewRecord = false
     /// The record when the current game started, to tell whether this game beat it.
@@ -40,35 +43,35 @@ struct GameView: View {
             )
             .ignoresSafeArea()
             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { screenHeight = $0 }
-            .placementGesture(scene: scene, minimumDistance: 0, handFrame: bottomPanelFrame) {
-                session.selectedCardID
-            }
+            .worldGesture(scene: scene)
             .accessibilityLabel(Text("Aire de construction"))
-            .accessibilityHint(Text("Touchez pour poser le bloc choisi, glissez pour viser."))
+            .accessibilityHint(Text("Touchez et glissez pour viser, lâchez pour poser la pièce."))
+            .accessibilityAction(named: Text("Lâcher sur la tour")) {
+                scene.dropAboveTower()
+            }
 
-            if isShopOpen {
-                // The tower stays visible behind, blurred, so the shop reads cleanly.
-                Rectangle()
-                    .fill(.regularMaterial)
-                    .ignoresSafeArea()
-                    .transition(.opacity)
-                ShopView(session: session, scene: scene) { isShopOpen = false }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            } else {
-                playingOverlay
+            playingOverlay
+
+            if let abilityStage {
+                AbilityStageView(
+                    stage: abilityStage,
+                    session: session,
+                    scene: scene,
+                    onPick: change,
+                    onClose: { self.abilityStage = nil }
+                )
+                .transition(.opacity)
             }
         }
         .animation(.spring(duration: 0.45, bounce: 0.2), value: session.phase)
-        .animation(.spring(duration: 0.45, bounce: 0.2), value: isShopOpen)
+        .animation(.spring(duration: 0.35), value: abilityStage == nil)
+        .animation(.spring(duration: 0.4), value: session.isPulling)
         .animation(.spring(duration: 0.4), value: showsHint)
         .animation(.spring(duration: 0.4, bounce: 0.3), value: bannerMilestone)
         .animation(.spring(duration: 0.4), value: session.windAlert)
         .animation(.spring(duration: 0.4, bounce: 0.35), value: session.combo.streak > 0)
         .animation(.spring(duration: 0.45, bounce: 0.35), value: showsRecordBanner)
-        .animation(.spring(duration: 0.4), value: ads.isRewardedReady)
-        .onChange(of: isPaused || isShopOpen, initial: true) { _, isFrozen in
+        .onChange(of: isPaused || abilityStage != nil || isWatchingAd, initial: true) { _, isFrozen in
             scene.setFrozen(isFrozen)
         }
         .onChange(of: session.lastMilestone) { _, milestone in
@@ -100,7 +103,7 @@ struct GameView: View {
         }
         .onChange(of: session.phase) { _, phase in
             if phase == .gameOver {
-                isShopOpen = false
+                abilityStage = nil
                 isNewRecord = settings.bestScore > recordBeforeGame
             }
         }
@@ -122,11 +125,29 @@ struct GameView: View {
         .defersSystemGestures(on: .vertical)
     }
 
-    /// Header on top, milestone banner under it, hand or end of game at the bottom.
+    /// Header on top with the ad and the reserve under it, banners under them, powers or end of game at the
+    /// bottom.
     private var playingOverlay: some View {
         VStack(spacing: 12) {
-            ClimbHeader(session: session, record: settings.bestScore, onPause: onPause, onShop: openShop)
+            ClimbHeader(session: session, record: settings.bestScore, onPause: onPause)
                 .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).maxY } action: { headerBottom = $0 }
+            if session.isPlaying {
+                HStack(alignment: .top) {
+                    AdRewardButton(
+                        left: session.adRewardsLeft,
+                        isEnabled: session.canEarnAbility && ads.isRewardedReady && !isWatchingAd,
+                        action: watchAdForAbility
+                    )
+                    Spacer()
+                    ReserveStack(session: session, scene: scene)
+                }
+                .transition(.opacity)
+            }
+            if let timeLeft = session.pullTimeLeft {
+                PullTimer(timeLeft: timeLeft)
+                    .transition(.scale(scale: 0.8).combined(with: .opacity))
+                    .allowsHitTesting(false)
+            }
             if session.combo.streak > 0 && session.isPlaying {
                 ComboBadge(combo: session.combo)
                     .transition(.scale(scale: 0.5).combined(with: .opacity))
@@ -155,7 +176,6 @@ struct GameView: View {
                         .allowsHitTesting(false)
                 }
                 bottomPanel
-                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { bottomPanelFrame = $0 }
             }
             .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minY } action: { bottomAreaTop = $0 }
         }
@@ -167,15 +187,13 @@ struct GameView: View {
     private var bottomPanel: some View {
         switch session.phase {
         case .playing:
-            HandTray(session: session, scene: scene, frame: bottomPanelFrame)
+            AbilityBar(session: session, scene: scene, onUse: use)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
         case .gameOver:
             GameOverPanel(
                 score: session.score,
                 record: settings.bestScore,
                 isNewRecord: isNewRecord,
-                canContinue: session.canContinue && ads.isRewardedReady,
-                onContinue: continueWithAd,
                 onReplay: { leaveGameOver(then: scene.startNewGame) },
                 onHome: { leaveGameOver(then: onHome) }
             )
@@ -200,24 +218,52 @@ struct GameView: View {
         }
     }
 
-    /// The player watches an ad; if they watch it through, every life comes back and the tower goes on.
-    private func continueWithAd() {
-        guard !isLeavingGameOver else { return }
-        isLeavingGameOver = true
+    /// Every power takes the stage the same way, then acts: a shape or material change asks for the piece,
+    /// the others act at once.
+    private func use(_ ability: Ability) {
+        guard abilityStage == nil, session.canUse(ability) else { return }
+        scene.prepareForPause()
+        abilityStage = .activating(ability)
         Task {
-            if await ads.presentRewarded() {
-                session.continueAfterAd()
+            try? await Task.sleep(for: .seconds(Tuning.Abilities.activationDuration))
+            guard abilityStage == .activating(ability) else { return }
+            switch ability {
+            case .reshape, .rematerial:
+                abilityStage = .picking(ability)
+            case .extraLife:
+                if session.useExtraLife() {
+                    scene.celebrateAbility()
+                }
+                abilityStage = nil
+            case .pull:
+                if session.startPull() {
+                    scene.celebrateAbility()
+                }
+                abilityStage = nil
             }
-            isLeavingGameOver = false
         }
     }
 
-    private func openShop() {
-        scene.prepareForPause()
-        isShopOpen = true
+    private func change(_ id: Card.ID, with ability: Ability) -> Bool {
+        guard session.change(id, with: ability) else { return false }
+        scene.celebrateAbility()
+        return true
     }
 
-    /// Screen areas the world keeps clear: the header on top, the hand (and its hint) at the bottom.
+    /// The player watches an ad; if they watch it through, the roulette draws a power for them.
+    private func watchAdForAbility() {
+        guard abilityStage == nil, !isWatchingAd, session.canEarnAbility else { return }
+        scene.prepareForPause()
+        isWatchingAd = true
+        Task {
+            if await ads.presentRewarded(), let won = session.earnAbility() {
+                abilityStage = .roulette(won: won)
+            }
+            isWatchingAd = false
+        }
+    }
+
+    /// Screen areas the world keeps clear: the header on top, the powers (and the hint) at the bottom.
     private var worldInsets: EdgeInsets {
         EdgeInsets(top: headerBottom, leading: 0, bottom: max(0, screenHeight - bottomAreaTop), trailing: 0)
     }

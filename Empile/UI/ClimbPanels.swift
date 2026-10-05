@@ -1,12 +1,11 @@
 import SwiftUI
 
-/// Always at the top: pause, the score, the best score ever, the lives left, and the way into the shop.
+/// Always at the top: pause, the score, the best score ever, and the lives left.
 struct ClimbHeader: View {
     let session: GameSession
     /// The best score ever, in points.
     let record: Int
     let onPause: () -> Void
-    let onShop: () -> Void
 
     var body: some View {
         HStack(spacing: 8) {
@@ -42,19 +41,6 @@ struct ClimbHeader: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .glassEffect(.regular, in: .capsule)
-
-            Button(action: onShop) {
-                VStack(spacing: 0) {
-                    Image(systemName: "bag.fill")
-                        .font(.body.weight(.semibold))
-                    GemsLabel(count: session.gems)
-                        .font(.caption.weight(.bold))
-                }
-                .frame(minWidth: 44, minHeight: 44)
-            }
-            .buttonStyle(.glass)
-            .disabled(!session.isPlaying)
-            .accessibilityLabel(Text("Boutique, \(session.gems) gemmes"))
         }
     }
 }
@@ -142,8 +128,6 @@ struct MilestoneBanner: View {
             Text("Palier \(milestone.floors) étages")
                 .font(.headline)
                 .fontDesign(.rounded)
-            GemsLabel(count: milestone.gems, showsPlus: true)
-                .font(.headline)
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 10)
@@ -177,14 +161,11 @@ struct WindBanner: View {
     }
 }
 
-/// Shown at the bottom once the last life is lost: watch an ad to go on, play again, or go home.
+/// Shown at the bottom once the last life is lost: play again, or go home.
 struct GameOverPanel: View {
     let score: Int
     let record: Int
     let isNewRecord: Bool
-    /// Whether an ad to continue can be offered (once per game, when one is loaded).
-    let canContinue: Bool
-    let onContinue: () -> Void
     let onReplay: () -> Void
     let onHome: () -> Void
 
@@ -207,27 +188,12 @@ struct GameOverPanel: View {
             }
             GlassEffectContainer(spacing: 10) {
                 VStack(spacing: 10) {
-                    if canContinue {
-                        Button(action: onContinue) {
-                            VStack(spacing: 2) {
-                                Label("Continuer", systemImage: "play.rectangle.fill")
-                                    .font(.headline)
-                                Text("Regardez une pub, récupérez vos vies")
-                                    .font(.caption)
-                                    .opacity(0.85)
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                        }
-                        .buttonStyle(.glassProminent)
-                        .symbolEffect(.wiggle, options: .repeat(.periodic(delay: 2)), value: canContinue)
-                        .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    Button(action: onReplay) {
+                        Label("Rejouer", systemImage: "arrow.counterclockwise")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    // The ad to continue takes the spotlight when it is offered.
-                    if canContinue {
-                        replayButton.buttonStyle(.glass)
-                    } else {
-                        replayButton.buttonStyle(.glassProminent)
-                    }
+                    .buttonStyle(.glassProminent)
                     Button(action: onHome) {
                         Text("Accueil")
                             .frame(maxWidth: .infinity, minHeight: 44)
@@ -239,44 +205,16 @@ struct GameOverPanel: View {
         .padding(20)
         .glassEffect(.regular, in: .rect(cornerRadius: 28))
     }
-
-    private var replayButton: some View {
-        Button(action: onReplay) {
-            Label("Rejouer", systemImage: "arrow.counterclockwise")
-                .font(.headline)
-                .frame(maxWidth: .infinity, minHeight: 44)
-        }
-    }
 }
 
 /// Until the very first block is placed: how to place one.
 struct PlacementHint: View {
     var body: some View {
-        Label("Touchez l'écran pour poser la pièce choisie", systemImage: "hand.tap.fill")
+        Label("Touchez l'écran, glissez, lâchez pour poser", systemImage: "hand.draw.fill")
             .font(.subheadline.weight(.semibold))
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .glassEffect(.regular, in: .capsule)
-    }
-}
-
-/// An amount of gems, the shop's currency.
-struct GemsLabel: View {
-    let count: Int
-    var showsPlus = false
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "diamond.fill")
-                .foregroundStyle(Color(uiColor: Palette.gem))
-                .imageScale(.small)
-            Text(showsPlus ? "+\(count)" : "\(count)")
-                .fontDesign(.rounded)
-                .monospacedDigit()
-                .contentTransition(.numericText(value: Double(count)))
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("\(count) gemmes"))
     }
 }
 

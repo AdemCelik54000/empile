@@ -15,6 +15,8 @@ enum Layer {
     static let bird: CGFloat = 90
     /// Floating points and sparkles, in front of everything in the world but the held block.
     static let effects: CGFloat = 95
+    /// The rope of the pull power, in front of the tower.
+    static let rope: CGFloat = 97
     static let heldBlock: CGFloat = 100
     /// Depth added per drop: later blocks draw above earlier ones, so shadows fall on the blocks below.
     static let dropStep: CGFloat = 0.001
@@ -22,6 +24,12 @@ enum Layer {
     static func droppedBlock(order: Int) -> CGFloat {
         droppedBlocks + CGFloat(order) * dropStep
     }
+}
+
+/// SpriteKit sets gravity in meters per second², but measures forces and impulses with lengths in points:
+/// a force in newtons must be multiplied by this before it is applied.
+enum PhysicsUnits {
+    static let pointsPerNewton = Tuning.World.pointsPerMeter
 }
 
 enum PhysicsCategory {
