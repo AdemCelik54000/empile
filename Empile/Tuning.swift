@@ -311,9 +311,8 @@ enum Tuning {
         static let liveInterstitialUnitID = "ca-app-pub-8817900109973306/8276486310"
         /// Google's public test unit for ads watched for a reward (here: a power drawn at random).
         static let testRewardedUnitID = "ca-app-pub-3940256099942544/1712485313"
-        /// The real rewarded unit of the AdMob account; until it exists, the App Store version cannot offer
-        /// powers for ads (test ads must never show there).
-        static let liveRewardedUnitID: String? = nil
+        /// The real rewarded unit of the AdMob account. Only the App Store version uses it.
+        static let liveRewardedUnitID: String? = "ca-app-pub-8817900109973306/3873051927"
     }
 
     enum Abilities {
