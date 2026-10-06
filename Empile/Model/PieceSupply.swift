@@ -60,7 +60,7 @@ struct PieceSupply: Sendable {
     /// The same piece in another material, picked at random, never the one it had.
     func rematerialized(_ card: Card, using generator: inout some RandomNumberGenerator) -> Card {
         var changed = card
-        changed.kind = BlockKind.allCases.filter { $0 != card.kind }.randomElement(using: &generator) ?? card.kind
+        changed.kind = BlockKind.inPlay.filter { $0 != card.kind }.randomElement(using: &generator) ?? card.kind
         return changed
     }
 
@@ -70,7 +70,7 @@ struct PieceSupply: Sendable {
             return .gold
         }
         if roll < odds.gold + odds.hazardChance(level: level) {
-            return Bool.random(using: &generator) ? .spring : .glass
+            return .spring
         }
         return .stone
     }
