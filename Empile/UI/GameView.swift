@@ -2,7 +2,7 @@ import SpriteKit
 import SwiftUI
 
 /// The game screen: the SpriteKit world full screen, the climb header on top with the ad for a power on the
-/// left and the reserve on the right, and the powers (or the end of the game) at the bottom. Touching the world
+/// left and the next two pieces on the right, and the powers (or the end of the game) at the bottom. Touching the world
 /// takes the waiting piece; the world keeps clear of the interface. Using a power freezes the world while it
 /// takes the stage.
 struct GameView: View {
@@ -128,7 +128,7 @@ struct GameView: View {
         .defersSystemGestures(on: .vertical)
     }
 
-    /// Header on top with the ad and the reserve under it, banners under them, powers or end of game at the
+    /// Header on top with the ad and the next pieces under it, banners under them, powers or end of game at the
     /// bottom.
     private var playingOverlay: some View {
         VStack(spacing: 12) {
@@ -143,7 +143,7 @@ struct GameView: View {
                         action: watchAdForAbility
                     )
                     Spacer()
-                    ReserveStack(session: session, scene: scene)
+                    UpcomingPieces(session: session, scene: scene)
                 }
                 .transition(.opacity)
             }

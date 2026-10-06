@@ -4,8 +4,8 @@ import Observation
 /// The state of a game, shared by the scene (which plays it) and SwiftUI (which shows it).
 /// It knows nothing about physics: the scene reports what happened, the session applies the rules.
 ///
-/// One tower, built higher and higher. The piece to place waits on screen, two more wait in reserve; each placed
-/// piece is replaced at once by a new one. Every few floors a milestone makes the game harder; each piece lost
+/// One tower, built higher and higher. The piece to place waits on screen, the next two are shown in order; each
+/// placed piece makes the line move up and a new piece join it. Every few floors a milestone makes the game harder; each piece lost
 /// costs a life. Powers (one of each to start, more from ads) can be used at any time.
 @MainActor
 @Observable
@@ -16,7 +16,7 @@ final class GameSession {
     }
 
     private(set) var phase = Phase.playing
-    /// The piece to place (the selected one) and the reserve, including the one being dragged.
+    /// The piece to place first, then the next two, in the order they come; including the one being dragged.
     private(set) var hand: [Card] = []
     private(set) var heldCardID: Card.ID?
     private(set) var selectedCardID: Card.ID?
@@ -63,8 +63,8 @@ final class GameSession {
     var maxLives: Int { startingLives }
     /// The card the rotate button acts on: the one being dragged, otherwise the selected one.
     var activeCard: Card? { hand.first { $0.id == (heldCardID ?? selectedCardID) } }
-    /// The pieces waiting in reserve, in the order they are shown.
-    var reserve: [Card] { hand.filter { $0.id != selectedCardID } }
+    /// The next pieces after the one to place, in the order they come.
+    var upcoming: [Card] { hand.filter { $0.id != selectedCardID } }
     var canRotate: Bool { isPlaying && !(activeCard?.shape.isTurnInvariant ?? true) }
 
     // MARK: - Game
@@ -136,12 +136,6 @@ final class GameSession {
 
     // MARK: - Building
 
-    /// Makes a piece of the reserve the one to place; the one it replaces goes to the reserve.
-    func select(_ id: Card.ID) {
-        guard isPlaying, heldCardID == nil, hand.contains(where: { $0.id == id }) else { return }
-        selectedCardID = id
-    }
-
     /// Turns a card a quarter turn: the one being dragged, otherwise the selected one.
     @discardableResult
     func rotateActiveCard() -> Card? {
@@ -153,9 +147,9 @@ final class GameSession {
     }
 
     func pickUp(_ id: Card.ID) -> Card? {
-        guard isPlaying, heldCardID == nil, let card = hand.first(where: { $0.id == id }) else { return nil }
+        guard isPlaying, heldCardID == nil, id == selectedCardID, let card = hand.first(where: { $0.id == id })
+        else { return nil }
         heldCardID = id
-        selectedCardID = id
         return card
     }
 
@@ -167,8 +161,9 @@ final class GameSession {
     func placeHeldCard() {
         guard let id = heldCardID, let index = hand.firstIndex(where: { $0.id == id }) else { return }
         heldCardID = nil
-        hand[index] = supply.next(level: climb.milestonesReached, using: &generator)
-        selectedCardID = hand[index].id
+        hand.remove(at: index)
+        hand.append(supply.next(level: climb.milestonesReached, using: &generator))
+        selectedCardID = hand.first?.id
     }
 
     // MARK: - Powers

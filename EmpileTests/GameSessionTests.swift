@@ -33,21 +33,20 @@ struct GameSessionTests {
         #expect(session.adRewardsLeft == Tuning.Abilities.adRewardsPerGame)
     }
 
-    @Test func theReserveIsEveryPieceButTheOneToPlace() {
+    @Test func placingAPieceMovesTheLineUpAndAddsANewOne() {
         let session = makeSession()
-        #expect(session.reserve.map(\.id) == [1, 2])
-        session.select(2)
-        #expect(session.selectedCardID == 2)
-        #expect(session.reserve.map(\.id) == [0, 1])
+        let before = session.hand.map(\.id)
+        place(session, before[0])
+        #expect(session.hand.count == 3)
+        #expect(session.hand.map(\.id).prefix(2) == before.suffix(2))
+        #expect(!session.hand.contains { $0.id == before[0] })
+        #expect(session.selectedCardID == before[1])
+        #expect(session.upcoming.map(\.id) == [before[2], session.hand[2].id])
     }
 
-    @Test func aPlacedPieceIsReplacedAtOnceInItsSlot() {
+    @Test func theUpcomingPiecesAreEveryPieceButTheOneToPlace() {
         let session = makeSession()
-        let placed = session.hand[1].id
-        place(session, placed)
-        #expect(session.hand.count == 3)
-        #expect(!session.hand.contains { $0.id == placed })
-        #expect(session.selectedCardID == session.hand[1].id)
+        #expect(session.upcoming.map(\.id) == [1, 2])
     }
 
     @Test func onlyOneBlockCanBeHeldAtATime() {
@@ -55,6 +54,7 @@ struct GameSessionTests {
         let first = session.hand[0].id
         #expect(session.pickUp(first) != nil)
         #expect(session.pickUp(session.hand[1].id) == nil)
+        #expect(session.pickUp(first) == nil)
         #expect(session.heldCardID == first)
     }
 
@@ -71,9 +71,9 @@ struct GameSessionTests {
         let session = makeSession(supply: barsOnly)
         let selected = try #require(session.activeCard)
         #expect(session.rotateActiveCard()?.shape == BlockShape.bar3.quarterTurned)
-        _ = session.pickUp(session.hand[1].id)
-        #expect(session.rotateActiveCard()?.id == session.hand[1].id)
-        #expect(session.hand.first { $0.id == selected.id }?.shape == BlockShape.bar3.quarterTurned)
+        _ = session.pickUp(selected.id)
+        #expect(session.rotateActiveCard()?.id == selected.id)
+        #expect(session.hand.first { $0.id == selected.id }?.shape == BlockShape.bar3)  // turned twice
     }
 
     @Test func squarePiecesCannotRotate() {
