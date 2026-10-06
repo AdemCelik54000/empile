@@ -99,7 +99,7 @@ struct AbilityMedal: View {
     }
 }
 
-/// "Which piece?": the piece to place and the two in reserve. The changed piece shows its new look for a
+/// "Which piece?": the piece to place and the next two. The changed piece shows its new look for a
 /// moment, then the game goes on.
 private struct PiecePicker: View {
     let ability: Ability
@@ -110,7 +110,7 @@ private struct PiecePicker: View {
     @State private var changedID: Card.ID?
 
     private var pieces: [Card] {
-        session.activeCard.map { [$0] + session.reserve } ?? session.reserve
+        session.activeCard.map { [$0] + session.upcoming } ?? session.upcoming
     }
 
     var body: some View {
@@ -139,7 +139,7 @@ private struct PiecePicker: View {
                                 .id("\(card.kind)\(card.shape)")
                                 .transition(.scale(scale: 0.3).combined(with: .opacity))
                             PieceBadge(kind: card.kind)
-                            Text(index == 0 ? "À poser" : "Réserve")
+                            Text(index == 0 ? "À poser" : "Ensuite")
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
                         }

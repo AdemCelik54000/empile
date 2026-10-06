@@ -92,31 +92,31 @@ struct CountBadge: View {
     }
 }
 
-/// Top right: the two pieces waiting in reserve. Touching one swaps it with the piece to place.
-struct ReserveStack: View {
+/// Top right: a small preview of the next two pieces, in the order they come. Nothing to touch.
+struct UpcomingPieces: View {
     let session: GameSession
     let scene: TowerScene
 
     var body: some View {
-        HStack(spacing: 6) {
-            ForEach(session.reserve) { card in
-                Button {
-                    session.select(card.id)
-                    scene.playTick()
-                } label: {
-                    BlockImage(scene: scene, kind: card.kind, shape: card.shape, unit: 11)
-                        .frame(width: 50, height: 50)
-                        .contentShape(.rect)
-                }
-                .buttonStyle(.glass)
-                .buttonBorderShape(.roundedRectangle(radius: 14))
-                .disabled(!session.isPlaying || session.heldCardID != nil)
-                .transition(.scale.combined(with: .opacity))
-                .accessibilityLabel(Text(PieceName.of(card.kind, card.shape)))
-                .accessibilityHint(Text("Échange cette pièce avec la pièce à poser."))
+        HStack(spacing: 8) {
+            Text("Ensuite")
+                .font(.caption2.weight(.semibold))
+                .textCase(.uppercase)
+                .foregroundStyle(.secondary)
+            ForEach(session.upcoming) { card in
+                BlockImage(scene: scene, kind: card.kind, shape: card.shape, unit: 8)
+                    .frame(width: 34, height: 34)
+                    .transition(.scale.combined(with: .opacity))
+                    .accessibilityLabel(Text(PieceName.of(card.kind, card.shape)))
             }
         }
-        .animation(.spring(duration: 0.35, bounce: 0.3), value: session.reserve.map(\.id))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .glassEffect(.regular, in: .capsule)
+        .allowsHitTesting(false)
+        .animation(.spring(duration: 0.35, bounce: 0.3), value: session.upcoming.map(\.id))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("Pièces suivantes"))
     }
 }
 

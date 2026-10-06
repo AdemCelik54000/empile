@@ -40,12 +40,11 @@ struct InterfaceStateTests {
         #expect(GameSettings(defaults: defaults).bestScore == 1200)
     }
 
-    @Test func selectingACardMakesItTheOneToPlace() {
+    @Test func onlyThePieceToPlaceCanBePickedUp() {
         let session = GameSession(seed: 3)
-        let second = session.hand[1].id
-        session.select(second)
-        #expect(session.selectedCardID == second)
-        #expect(session.pickUp(second)?.id == second)
+        let first = session.hand[0].id
+        #expect(session.pickUp(session.hand[1].id) == nil)
+        #expect(session.pickUp(first)?.id == first)
     }
 }
 
