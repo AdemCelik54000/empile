@@ -1,0 +1,207 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    EMPILE - PRÊT POUR L'APP STORE ✅
+═══════════════════════════════════════════════════════════════════════════════
+
+Tout est préparé pour soumettre Empile à l'App Store Apple. Voici ce qu'on a fait:
+
+✅ CONFIGURATION XCODE
+   - Version: 1.0
+   - Build: 1
+   - Bundle ID: app.empile.Empile
+   - iOS minimum: 15.0
+   - Tous les 141 tests passent
+
+✅ INFORMATIONS LÉGALES & PRIVÉE
+   - Privacy Policy complète (conforme GDPR)
+   - Copyright et infos légales dans Info.plist
+   - Pas de chiffrement (ITSAppUsesNonExemptEncryption = false)
+
+✅ MÉTADONNÉES APP STORE
+   - Description professionnelle (4000 chars)
+   - Keywords pertinents (puzzle, blocks, casual, etc.)
+   - Release notes pour v1.0
+   - Catégorie: Games > Puzzle
+
+✅ CONTENU PRÉPARÉ
+   - Guide de capture de screenshots (6 par device)
+   - Instructions de redimensionnement
+   - Checklist complète de vérification
+   - Exemple de structure pour privacy policy & support
+
+✅ DOCUMENTATION
+   - README.md: guide complet de soumission
+   - URLs-Setup.md: comment configurer les URLs requises
+   - AppStoreMetadata.md: tous les textes à utiliser
+   - SubmissionChecklist.md: tout vérifier avant de soumettre
+
+═══════════════════════════════════════════════════════════════════════════════
+                        PROCHAINES ÉTAPES À FAIRE
+═══════════════════════════════════════════════════════════════════════════════
+
+ÉTAPE 1: CRÉER LES URLs OBLIGATOIRES (30 min)
+─────────────────────────────────────────────
+Voir: AppStore/URLs-Setup.md
+
+Tu dois créer 2 pages:
+   1. Privacy Policy: https://example.com/empile/privacy
+   2. Support Page: https://example.com/empile/support
+
++ Créer une adresse email de support: empile.support@example.com
+
+Options rapides:
+   - GitHub Pages (gratuit, facile)
+   - Netlify (gratuit, simple)
+   - Ton propre site web
+
+ÉTAPE 2: CRÉER LES SCREENSHOTS (30 min)
+────────────────────────────────────────
+Voir: AppStore/ScreenshotGuide.md
+
+1. Lancer Empile dans le simulateur
+2. Capturer 6 screenshots de gameplay différents:
+   ✓ Menu/titre
+   ✓ Tutoriel
+   ✓ Gameplay actif
+   ✓ Effet vent
+   ✓ Score élevé
+   ✓ Leaderboards Game Center
+
+3. Redimensionner:
+   iPhone: 1242 × 2688
+   iPad: 2048 × 2732
+
+ÉTAPE 3: ALLER SUR APP STORE CONNECT (15 min)
+──────────────────────────────────────────────
+https://appstoreconnect.apple.com
+
+1. Créer une nouvelle app:
+   - Bundle ID: app.empile.Empile
+   - Nom: Empile
+   - Catégorie: Games > Puzzle
+
+2. Remplir les métadonnées:
+   - Utiliser le texte de AppStore/AppStoreMetadata.md
+   - Ajouter tes URLs réelles
+   - Uploader les screenshots
+
+3. Définir l'âge: 4+ (All Ages)
+
+ÉTAPE 4: ARCHIVER ET UPLOADER (15 min)
+────────────────────────────────────────
+1. Dans Xcode:
+   Product → Archive
+
+2. Cliquer "Distribute App"
+   → App Store Connect
+   → Upload
+
+3. Attendre le traitement (~5-10 min)
+
+ÉTAPE 5: SOUMETTRE POUR RÉVISION (5 min)
+──────────────────────────────────────────
+Dans App Store Connect:
+   → Click "Submit for Review"
+   → Répondre aux questions de révision
+   → Confirmer
+
+═══════════════════════════════════════════════════════════════════════════════
+                      DÉTAILS IMPORTANTS À RETENIR
+═══════════════════════════════════════════════════════════════════════════════
+
+🔒 PRIVÉE & LÉGAL
+   ✓ Privacy Policy doit toujours être accessible
+   ✓ Support email doit être monitoré (répondre en < 24h)
+   ✓ HTTPS obligatoire (pas HTTP)
+   ✓ Ne jamais supprimer ces pages après approbation
+
+📱 APP STORE
+   ✓ Description est honnête et claire
+   ✓ Pas de mots-clés dupliqués
+   ✓ Screenshots montrent le vrai gameplay
+   ✓ Pas de contenu trompe-l'oeil
+
+🎮 JEU
+   ✓ Jouable complètement hors-ligne
+   ✓ Pas de crash au démarrage
+   ✓ Tous les tests passent
+   ✓ Publicités sont optionnelles
+
+═══════════════════════════════════════════════════════════════════════════════
+                           ESTIMATION DE TEMPS
+═══════════════════════════════════════════════════════════════════════════════
+
+Préparation:
+   - URLs: 30 min
+   - Screenshots: 30 min
+   - Métadonnées: 15 min
+   - Archive & upload: 15 min
+   - Révision Apple: 24-48h ⏳
+
+Total avant soumission: ~90 min
+Attente pour approbation: 24-48 heures (parfois plus)
+
+═══════════════════════════════════════════════════════════════════════════════
+                            VIDÉO/RESSOURCES
+═══════════════════════════════════════════════════════════════════════════════
+
+📚 Fichiers de référence dans AppStore/:
+   - README.md ← LIS CELUI-CI EN PREMIER
+   - SubmissionChecklist.md ← Cocher tout avant de soumettre
+   - AppStoreMetadata.md ← Copier/coller les descriptions
+   - URLs-Setup.md ← Instructions détaillées pour les URLs
+   - ScreenshotGuide.md ← Comment faire les screenshots
+
+🔗 Liens utiles:
+   - App Store Review Guidelines: https://developer.apple.com/app-store/review/guidelines/
+   - App Store Connect: https://appstoreconnect.apple.com
+   - Apple Developer Account: https://developer.apple.com
+
+═══════════════════════════════════════════════════════════════════════════════
+                        SI REJETÉ PAR APPLE
+═══════════════════════════════════════════════════════════════════════════════
+
+Si Apple refuse l'app:
+   1. Lire ATTENTIVEMENT la raison de rejet
+   2. Fixer le problème
+   3. Incrémenter le build number (1 → 2)
+   4. Upload le nouveau build
+   5. Resubmit avec note expliquant la fix
+   6. Reattendue (24-48h)
+
+Rejets courants (à éviter):
+   ❌ Nom d'app trompeur
+   ❌ Descriptions trompeuses
+   ❌ Crashes au démarrage
+   ❌ Privacy policy manquante
+   ❌ Gameplay différent des screenshots
+   ❌ Code de débogage laissé
+   ❌ Contenu offensif
+
+═══════════════════════════════════════════════════════════════════════════════
+                              CHECKLIST FINALE
+═══════════════════════════════════════════════════════════════════════════════
+
+Avant de soumettre, s'assurer que:
+
+□ URLs fonctionnent (Privacy Policy & Support)
+□ Email de support est monitoré
+□ 6+ screenshots par device type
+□ Screenshots en bon résolution (1242×2688 ou 2048×2732)
+□ Toutes métadonnées remplies (voir AppStoreMetadata.md)
+□ Age rating: 4+
+□ Aucun crash au démarrage
+□ Jeu jouable offline
+□ Build compile sans erreur (BUILD SUCCEEDED)
+□ Tous les tests passent (141 tests)
+□ Version: 1.0
+□ Build number: 1
+
+═══════════════════════════════════════════════════════════════════════════════
+                                BON COURAGE! 🚀
+═══════════════════════════════════════════════════════════════════════════════
+
+Tout est prêt. Suis les étapes ci-dessus et tu devrais être approuvé rapidement.
+
+Des questions? Voir les fichiers de documentation dans AppStore/
+
+Bonne chance! ⭐
