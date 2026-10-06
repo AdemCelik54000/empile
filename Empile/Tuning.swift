@@ -139,6 +139,12 @@ enum Tuning {
         static let edgeZoomOut: CGFloat = 0.06
     }
 
+    enum Tutorial {
+        /// The first game shows how to play for this many pieces placed.
+        static let placements = 3
+        static let ringSize: CGFloat = 92
+    }
+
     enum Climb {
         static let lives = 3
         /// Pieces to choose from; each one placed is replaced at once.

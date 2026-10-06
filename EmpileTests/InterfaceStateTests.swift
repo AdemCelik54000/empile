@@ -16,7 +16,6 @@ struct InterfaceStateTests {
         let settings = GameSettings(defaults: freshDefaults())
         #expect(settings.isSoundOn)
         #expect(settings.isHapticsOn)
-        #expect(!settings.hasPlacedFirstBlock)
     }
 
     @Test func settingsSurviveARelaunch() {
@@ -24,11 +23,9 @@ struct InterfaceStateTests {
         let settings = GameSettings(defaults: defaults)
         settings.isSoundOn = false
         settings.isHapticsOn = false
-        settings.hasPlacedFirstBlock = true
         let relaunched = GameSettings(defaults: defaults)
         #expect(!relaunched.isSoundOn)
         #expect(!relaunched.isHapticsOn)
-        #expect(relaunched.hasPlacedFirstBlock)
     }
 
     @Test func theRecordOnlyRisesAndSurvivesARelaunch() {

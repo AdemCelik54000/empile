@@ -29,6 +29,8 @@ struct GameView: View {
     @State private var recordBeforeGame = 0
     /// The "new record" banner is on screen.
     @State private var showsRecordBanner = false
+    /// Pieces placed in this game, while it is the first one ever (for the tutorial).
+    @State private var tutorialPlacements = 0
     /// This game has already celebrated beating the record.
     @State private var hasCelebratedRecord = false
     /// An ad is on screen, or about to be: the buttons of the game over panel wait.
@@ -52,6 +54,10 @@ struct GameView: View {
                 scene.dropAboveTower()
             }
 
+            if let tutorialStep {
+                TutorialRings(step: tutorialStep, scene: scene)
+            }
+
             playingOverlay
 
             if let abilityStage {
@@ -69,7 +75,7 @@ struct GameView: View {
         .animation(.spring(duration: 0.45, bounce: 0.2), value: session.phase)
         .animation(.spring(duration: 0.35), value: abilityStage == nil)
         .animation(.spring(duration: 0.4), value: session.isPulling)
-        .animation(.spring(duration: 0.4), value: showsHint)
+        .animation(.spring(duration: 0.4), value: tutorialStep)
         .animation(.spring(duration: 0.4, bounce: 0.3), value: bannerMilestone)
         .animation(.spring(duration: 0.4), value: session.windAlert)
         .animation(.spring(duration: 0.4, bounce: 0.35), value: session.combo.streak > 0)
@@ -90,8 +96,10 @@ struct GameView: View {
             guard score > 0 else {
                 recordBeforeGame = settings.bestScore
                 hasCelebratedRecord = false
+                tutorialPlacements = 0
                 return
             }
+            tutorialPlacements += 1
             settings.recordScore(score)
             if recordBeforeGame > 0, score > recordBeforeGame, !hasCelebratedRecord {
                 hasCelebratedRecord = true
@@ -115,11 +123,6 @@ struct GameView: View {
         }
         .onChange(of: colorScheme, initial: true) { _, scheme in
             scene.setAppearance(scheme == .dark ? .dark : .light)
-        }
-        .onChange(of: session.climb.floors) { _, floors in
-            if floors > 0 {
-                settings.hasPlacedFirstBlock = true
-            }
         }
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
@@ -174,8 +177,8 @@ struct GameView: View {
             }
             Spacer(minLength: 0)
             VStack(spacing: 12) {
-                if showsHint {
-                    PlacementHint()
+                if let tutorialStep {
+                    TutorialBubble(step: tutorialStep)
                         .transition(.scale(scale: 0.9).combined(with: .opacity))
                         .allowsHitTesting(false)
                 }
@@ -205,8 +208,12 @@ struct GameView: View {
         }
     }
 
-    private var showsHint: Bool {
-        !settings.hasPlacedFirstBlock && session.isPlaying && session.heldCardID == nil
+    /// The first game ever (no record when it started) shows how to play, for its first few pieces.
+    private var tutorialStep: TutorialStep? {
+        guard recordBeforeGame == 0, tutorialPlacements < Tuning.Tutorial.placements, session.isPlaying,
+              abilityStage == nil, !session.isPulling
+        else { return nil }
+        return session.heldCardID == nil ? .take : .aim(canTurn: session.canRotate)
     }
 
     /// Leaving the game over screen ends the game for good: it counts toward the next ad, which is shown now

@@ -146,6 +146,18 @@ final class TowerScene: SKScene {
         place(release.block, velocity: release.velocity)
     }
 
+    /// Another finger taps the screen while one holds the piece: the piece turns.
+    func secondFingerTapped() {
+        guard drag.isDragging else { return }
+        rotateActiveCard()
+    }
+
+    /// Where the waiting piece is on screen, in view coordinates, for the tutorial.
+    var readyPointInView: CGPoint? {
+        guard let readyBlock, readyBlock.parent != nil else { return nil }
+        return convertPoint(toView: readyBlock.position)
+    }
+
     /// The held piece goes back to waiting above the tower.
     func cancelDrag() {
         guard let block = drag.cancel() else { return }

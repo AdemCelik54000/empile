@@ -207,17 +207,6 @@ struct GameOverPanel: View {
     }
 }
 
-/// Until the very first block is placed: how to place one.
-struct PlacementHint: View {
-    var body: some View {
-        Label("Touchez l'écran, glissez, lâchez pour poser", systemImage: "hand.draw.fill")
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .glassEffect(.regular, in: .capsule)
-    }
-}
-
 /// A small caption over a rounded number.
 private struct Figure: View {
     let caption: LocalizedStringKey
