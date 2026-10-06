@@ -8,7 +8,6 @@ final class GameSettings {
     private enum Key {
         static let sound = "settings.sound"
         static let haptics = "settings.haptics"
-        static let hasPlacedFirstBlock = "settings.hasPlacedFirstBlock"
         static let bestScore = "record.bestScore"
         static let gamesSinceAd = "ads.gamesSinceAd"
     }
@@ -19,11 +18,6 @@ final class GameSettings {
 
     var isHapticsOn: Bool {
         didSet { defaults.set(isHapticsOn, forKey: Key.haptics) }
-    }
-
-    /// Until the first block is placed, the game shows how to place one.
-    var hasPlacedFirstBlock: Bool {
-        didSet { defaults.set(hasPlacedFirstBlock, forKey: Key.hasPlacedFirstBlock) }
     }
 
     /// The best score ever, in points.
@@ -42,7 +36,6 @@ final class GameSettings {
         self.defaults = defaults
         isSoundOn = defaults.object(forKey: Key.sound) as? Bool ?? true
         isHapticsOn = defaults.object(forKey: Key.haptics) as? Bool ?? true
-        hasPlacedFirstBlock = defaults.bool(forKey: Key.hasPlacedFirstBlock)
         bestScore = defaults.integer(forKey: Key.bestScore)
         adSchedule = AdSchedule(gamesSinceAd: defaults.integer(forKey: Key.gamesSinceAd))
     }
