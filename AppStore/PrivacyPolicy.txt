@@ -1,0 +1,54 @@
+EMPILE - PRIVACY POLICY
+
+Last Updated: October 2026
+
+## Overview
+Empile is a casual puzzle game. Your privacy matters to us.
+
+## Data Collection
+Empile collects minimal data:
+
+### Local Data (Stored on Your Device Only)
+- Game scores and high scores
+- Game settings (sound, haptics)
+- Game progress and statistics
+- These are stored only on your device and never sent anywhere
+
+### Online Services
+- Game Center: Optional. If you enable it, your score is sent to Apple's Game Center service to compete with friends
+- Ads: The game may show ads served by Google AdMob. Google may collect:
+  - Approximate location (based on IP)
+  - Device information
+  - Advertising ID
+  - See Google's privacy policy: https://policies.google.com/privacy
+
+## Permissions
+Empile requests NO special permissions. It doesn't access:
+- Camera or microphone
+- Photos or files
+- Contacts
+- Health data
+- Location (except via ads)
+
+## Third-Party Services
+- **Apple Game Center**: For leaderboards and achievements (optional)
+- **Google AdMob**: For advertisements
+- **Apple App Store**: For crash reports (if enabled in settings)
+
+## Children's Privacy
+Empile is suitable for all ages. It contains:
+- No personal data collection from children
+- Age-appropriate casual gameplay
+- No external links or social features
+- No in-app purchases requiring payment details
+
+## Data Retention
+- Game data is stored locally on your device
+- Game Center data is managed by Apple
+- You can reset all game data anytime in the app settings
+
+## Contact
+Questions? Email support at: empile.support@example.com
+
+## Changes to This Policy
+We may update this policy. Changes are effective when posted.
