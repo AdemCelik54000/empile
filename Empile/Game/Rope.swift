@@ -66,9 +66,16 @@ final class Rope {
             dx: tuning.pullStiffness * (finger.x - anchor.x) - tuning.pullDamping * speed.dx,
             dy: tuning.pullStiffness * (finger.y - anchor.y) - tuning.pullDamping * speed.dy
         )
+        // A piece buried under the tower is held down by the pieces on it: the rope pulls harder the more it carries.
+        let carried = body.allContactedBodies().reduce(CGFloat(0)) { total, other in
+            other.node.map { $0.position.y > block.position.y } == true ? total + other.mass : total
+        }
+        let load = min(1 + carried / max(body.mass, 0.001), tuning.maxPullLoadBoost)
+        acceleration = CGVector(dx: acceleration.dx * load, dy: acceleration.dy * load)
         let magnitude = hypot(acceleration.dx, acceleration.dy)
-        if magnitude > tuning.maxPullAcceleration {
-            let shrink = tuning.maxPullAcceleration / magnitude
+        let limit = tuning.maxPullAcceleration * load
+        if magnitude > limit {
+            let shrink = limit / magnitude
             acceleration = CGVector(dx: acceleration.dx * shrink, dy: acceleration.dy * shrink)
         }
         // Impulses are in kilograms × points per second: the push over this frame is mass × acceleration × time.
@@ -77,8 +84,9 @@ final class Rope {
         body.applyImpulse(CGVector(dx: acceleration.dx * perAcceleration, dy: acceleration.dy * perAcceleration),
                           at: anchor)
         let speedNow = hypot(body.velocity.dx, body.velocity.dy)
-        if speedNow > tuning.maxPullSpeed {
-            let shrink = tuning.maxPullSpeed / speedNow
+        let speedLimit = tuning.maxPullSpeed * min(load, 1.5)
+        if speedNow > speedLimit {
+            let shrink = speedLimit / speedNow
             body.velocity = CGVector(dx: body.velocity.dx * shrink, dy: body.velocity.dy * shrink)
         }
     }
