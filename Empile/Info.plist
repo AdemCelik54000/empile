@@ -6,12 +6,8 @@
 	<true/>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-8817900109973306~3491063497</string>
-	<key>NSHumanReadableCopyright</key>
-	<string>© 2026 Empile. All rights reserved.</string>
 	<key>NSLocalizedDescription</key>
 	<string>Stack blocks higher and higher in this addictive puzzle game.</string>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
