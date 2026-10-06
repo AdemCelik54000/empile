@@ -127,7 +127,9 @@ private struct PiecePicker: View {
                         guard changedID == nil, onPick(card.id, ability) else { return }
                         changedID = card.id
                         Task {
-                            try? await Task.sleep(for: .seconds(Tuning.Abilities.changeDisplayDuration))
+                            guard (try? await Task.sleep(for: .seconds(Tuning.Abilities.changeDisplayDuration)))
+                                    != nil
+                            else { return }
                             onClose()
                         }
                     } label: {
@@ -215,13 +217,13 @@ private struct AbilityRoulette: View {
             // Eases out: each step lasts a little longer than the one before.
             let progress = Double(step) / Double(max(steps, 1))
             let delay = delays.lowerBound + (delays.upperBound - delays.lowerBound) * progress * progress
-            try? await Task.sleep(for: .seconds(delay))
+            guard (try? await Task.sleep(for: .seconds(delay))) != nil else { return }
             highlighted = step % all.count
             scene.playTick()
         }
         isDone = true
         scene.celebrateAbility()
-        try? await Task.sleep(for: .seconds(Tuning.Abilities.rouletteResultDuration))
+        guard (try? await Task.sleep(for: .seconds(Tuning.Abilities.rouletteResultDuration))) != nil else { return }
         onClose()
     }
 }
