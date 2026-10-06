@@ -205,6 +205,17 @@ struct GameSessionTests {
 
 @Suite("Piece supply")
 struct PieceSupplyTests {
+    @Test func glassIsNeverDealtNorRolled() {
+        var supply = PieceSupply()
+        var generator = SeededGenerator(seed: 5)
+        for _ in 0..<3000 {
+            let card = supply.next(level: 20, using: &generator)
+            #expect(card.kind != .glass)
+            #expect(supply.rematerialized(card, using: &generator).kind != .glass)
+            #expect(supply.rematerialized(card, using: &generator).kind != card.kind)
+        }
+    }
+
     @Test func piecesAreRandomButReproducible() {
         var first = PieceSupply()
         var second = PieceSupply()

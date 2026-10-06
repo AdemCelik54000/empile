@@ -106,8 +106,9 @@ enum Tuning {
         static let sideMargin: CGFloat = 8
         /// With the camera peeking to a side, share of the block's width that may stick out of the screen.
         static let edgeOverhang: CGFloat = 2.0 / 3.0
-        /// Share of the finger's horizontal speed given to the block when released.
-        static let inheritedVelocityFactor: CGFloat = 0.25
+        /// Share of the finger's horizontal speed given to the block when released: none, a piece lets go
+        /// and simply falls where it was.
+        static let inheritedVelocityFactor: CGFloat = 0
         static let maxInheritedSpeed: CGFloat = 240
         /// The release speed is measured over this last stretch of the gesture.
         static let velocityWindow: TimeInterval = 0.08

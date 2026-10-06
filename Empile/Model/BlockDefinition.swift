@@ -4,6 +4,10 @@ enum BlockKind: Hashable, Sendable, CaseIterable {
     case spring
     case glass
     case gold
+
+    /// The materials the game deals and the dice can give. Glass is out of the game for now: its rules and
+    /// look stay in place, so putting it back is just adding it here.
+    static let inPlay: [BlockKind] = [.stone, .spring, .gold]
 }
 
 /// What a piece does beyond being stacked.
