@@ -151,20 +151,6 @@ final class TextureFactory {
         return SKTexture(image: image)
     }
 
-    /// A thin line with rounded ends and soft tips, for wind streaks.
-    func streak(length: CGFloat, thickness: CGFloat) -> SKTexture {
-        let size = CGSize(width: length, height: thickness)
-        let image = renderer(size: size).image { context in
-            let colors = [UIColor.white.withAlphaComponent(0).cgColor, UIColor.white.cgColor,
-                          UIColor.white.withAlphaComponent(0).cgColor]
-            guard let gradient = CGGradient(colorsSpace: nil, colors: colors as CFArray, locations: [0, 0.6, 1])
-            else { return }
-            UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: thickness / 2).addClip()
-            context.cgContext.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: length, y: 0), options: [])
-        }
-        return SKTexture(image: image)
-    }
-
     func platform(size: CGSize) -> SKTexture {
         let base = resolve(Palette.platform)
         let rect = CGRect(origin: .zero, size: size)
