@@ -168,8 +168,8 @@ enum Tuning {
             WeightedShape(shape: .z, weight: 2),
             WeightedShape(shape: .mono, weight: 1),
         ]
-        /// Tricky pieces (spring, glass) grow more common with each milestone; gold stays rare.
-        static let odds = MaterialOdds(hazard: 0.12, hazardPerLevel: 0.03, maxHazard: 0.4, gold: 0.04)
+        /// Spring pieces grow slightly more common with each milestone, at most about 1 in 15; gold stays rare.
+        static let odds = MaterialOdds(hazard: 0.04, hazardPerLevel: 0.004, maxHazard: 0.067, gold: 0.04)
     }
 
     enum Score {
