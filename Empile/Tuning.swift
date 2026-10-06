@@ -735,6 +735,13 @@ enum Tuning {
     }
 
     enum Look {
+        /// Soft glowing motes drifting up through the sky, for a little magic in the background.
+        static let moteSize: CGFloat = 18
+        static let motesPerSecond: CGFloat = 1.8
+        static let moteLifetime: CGFloat = 9
+        static let moteRiseSpeed: CGFloat = 14
+        static let moteOpacity: CGFloat = 0.75
+        static let moteScale: CGFloat = 0.7
         static let blockCornerRadius: CGFloat = 0.2 * World.unit
         static let platformCornerRadius: CGFloat = 7
         /// Room around each block texture for its soft shadow.

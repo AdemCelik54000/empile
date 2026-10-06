@@ -31,6 +31,8 @@ final class TowerScene: SKScene {
     private let effects = PlacementEffects()
     private var wind = TowerScene.makeWind()
     private let sky = SKSpriteNode()
+    /// Glowing motes drifting up through the sky, behind the tower.
+    private let motes = SKEmitterNode()
     private var slowMotion = SlowMotion()
     private var style = UIUserInterfaceStyle.light
     private var safeArea = (top: CGFloat(0), bottom: CGFloat(0))
@@ -314,6 +316,8 @@ final class TowerScene: SKScene {
         camera = cameraRig.node
         sky.zPosition = Layer.background
         cameraRig.node.addChild(sky)
+        setUpMotes()
+        cameraRig.node.addChild(motes)
         for node in [platform.node, guide.node, dust.node, powers.node, bird.node, effects.node, rope.node,
                      windEffect.node] {
             addChild(node)
@@ -525,14 +529,36 @@ final class TowerScene: SKScene {
     // MARK: - Layout and appearance
 
     /// The first layout places the camera at once; later changes (the interface settling) ease in.
+    private func setUpMotes() {
+        let look = Tuning.Look.self
+        motes.zPosition = Layer.background + 1
+        motes.particleBirthRate = look.motesPerSecond
+        motes.particleLifetime = look.moteLifetime
+        motes.particleLifetimeRange = look.moteLifetime / 2
+        motes.emissionAngle = .pi / 2
+        motes.emissionAngleRange = .pi / 3
+        motes.particleSpeed = look.moteRiseSpeed
+        motes.particleSpeedRange = look.moteRiseSpeed
+        motes.particleScale = look.moteScale
+        motes.particleScaleRange = look.moteScale * 0.6
+        motes.particleRotationSpeed = 0.4
+        motes.particleColorBlendFactor = 1
+        motes.particleAlphaSequence = SKKeyframeSequence(keyframeValues: [0, look.moteOpacity, look.moteOpacity * 0.4,
+                                                                     look.moteOpacity, 0].map { NSNumber(value: Double($0)) },
+                                                         times: [0, 0.25, 0.5, 0.75, 1])
+    }
+
     private func layoutViewport() {
         guard isBuilt, size.width > 0, size.height > 0 else { return }
         sky.size = size
+        motes.particlePositionRange = CGVector(dx: size.width, dy: size.height)
         let viewport = CameraFraming.Viewport(size: size, topInset: safeArea.top, bottomInset: safeArea.bottom)
         if hasLaidOut {
             cameraRig.setViewport(viewport)
         } else {
             cameraRig.snap(to: viewport, towerTop: tower.stableTop)
+            // The sky starts already filled with motes.
+            motes.advanceSimulationTime(TimeInterval(Tuning.Look.moteLifetime))
             hasLaidOut = true
         }
     }
@@ -542,6 +568,8 @@ final class TowerScene: SKScene {
         textures.configure(style: style, displayScale: view.contentScaleFactor)
         backgroundColor = textures.resolve(Palette.skyBottom)
         sky.texture = textures.verticalGradient(top: Palette.skyTop, bottom: Palette.skyBottom)
+        motes.particleTexture = textures.sparkle(size: Tuning.Look.moteSize)
+        motes.particleColor = textures.resolve(Palette.mote)
         platform.refreshTextures(using: textures)
         guide.refreshColors(using: textures)
         dust.refresh(using: textures)

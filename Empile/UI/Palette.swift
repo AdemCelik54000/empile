@@ -3,20 +3,20 @@ import UIKit
 /// The only place colors are defined. Each one adapts to light and dark mode.
 /// SwiftUI uses them through `Color(uiColor:)`; the game scene resolves them for its current style.
 enum Palette {
-    static let skyTop = UIColor(light: UIColor(hex: 0xE6ECF4), dark: UIColor(hex: 0x0A0E17))
-    static let skyBottom = UIColor(light: UIColor(hex: 0xF8F5EF), dark: UIColor(hex: 0x1A2030))
-    static let platform = UIColor(light: UIColor(hex: 0x454B58), dark: UIColor(hex: 0x4D5566))
-    static let pillar = UIColor(light: UIColor(hex: 0x6A7080), dark: UIColor(hex: 0x30374A))
+    static let skyTop = UIColor(light: UIColor(hex: 0xA9D8FF), dark: UIColor(hex: 0x0B0A2A))
+    static let skyBottom = UIColor(light: UIColor(hex: 0xFFE1F0), dark: UIColor(hex: 0x3B1E63))
+    static let platform = UIColor(light: UIColor(hex: 0x3D3A8C), dark: UIColor(hex: 0x5A4FB8))
+    static let pillar = UIColor(light: UIColor(hex: 0x7A74D6), dark: UIColor(hex: 0x2C2466))
     static let guide = UIColor.label
     static let shadow = UIColor(
         light: UIColor(hex: 0x1A2233, alpha: 0.3),
         dark: UIColor(hex: 0x000000, alpha: 0.6)
     )
-    static let dust = UIColor(light: UIColor(hex: 0xB3AA9C), dark: UIColor(hex: 0x8F8A82))
+    static let dust = UIColor(light: UIColor(hex: 0xC7B5F0), dark: UIColor(hex: 0x9E8AD6))
     static let highlight = UIColor.white
     static let shade = UIColor.black
-    static let stone = UIColor(light: UIColor(hex: 0x9A948B), dark: UIColor(hex: 0xA7A197))
-    static let spring = UIColor(light: UIColor(hex: 0xE07A4F), dark: UIColor(hex: 0xEE8D62))
+    static let stone = UIColor(light: UIColor(hex: 0x3FC1A5), dark: UIColor(hex: 0x52D6BA))
+    static let spring = UIColor(light: UIColor(hex: 0xFF5FA2), dark: UIColor(hex: 0xFF7AB6))
     /// See-through: the sky shows behind it.
     static let glass = UIColor(
         light: UIColor(hex: 0x8FCFE6, alpha: Tuning.Look.glassFillOpacity),
@@ -25,7 +25,6 @@ enum Palette {
     static let gold = UIColor(light: UIColor(hex: 0xE3B23C), dark: UIColor(hex: 0xEDC25A))
     /// Glass shards, more opaque than the block so they read as sparkles.
     static let shard = UIColor(light: UIColor(hex: 0xBFE6F3), dark: UIColor(hex: 0xA6DCEE))
-    /// The game's accent, for buttons and highlights in the interface.
     /// Floating points: dark over the light sky, light over the night sky.
     static let scoreText = UIColor.label
     /// Perfect placements, combos and records: a warm, glowing gold.
@@ -33,9 +32,12 @@ enum Palette {
     /// A small dark bird over the light sky, a pale one over the night sky.
     static let bird = UIColor(light: UIColor(hex: 0x3D4656), dark: UIColor(hex: 0xBAC4D4))
     static let beak = UIColor(light: UIColor(hex: 0xE8963A), dark: UIColor(hex: 0xF2AD55))
+    /// Motes drifting in the sky: pearly over the day sky, warm starlight over the night sky.
+    static let mote = UIColor(light: UIColor(hex: 0xFFFFFF), dark: UIColor(hex: 0xFFE59E))
     /// Wind streaks: light enough to read as air, visible over the sky in both modes.
-    static let wind = UIColor(light: UIColor(hex: 0x7F8BA0), dark: UIColor(hex: 0xC9D3E3))
-    static let accent = UIColor(light: UIColor(hex: 0xD9683A), dark: UIColor(hex: 0xF08A5D))
+    static let wind = UIColor(light: UIColor(hex: 0x5E7FD6), dark: UIColor(hex: 0xCFDCFF))
+    /// The game's accent, for buttons and highlights in the interface: a bright blue.
+    static let accent = UIColor(light: UIColor(hex: 0x2F6BFF), dark: UIColor(hex: 0x5C8DFF))
 
     static func base(of kind: BlockKind) -> UIColor {
         switch kind {
