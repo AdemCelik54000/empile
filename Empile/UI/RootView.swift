@@ -78,6 +78,15 @@ struct RootView: View {
             gameCenter.authenticate()
             gameCenter.submit(settings.bestScore)
         }
+        .onChange(of: gameCenter.isAuthenticated) { _, isSignedIn in
+            // A reinstalled game starts without a record: Game Center still has it.
+            guard isSignedIn else { return }
+            Task {
+                if let remote = await gameCenter.loadMyScore() {
+                    settings.recordScore(remote)
+                }
+            }
+        }
         .onChange(of: session.phase) { _, phase in
             if phase == .gameOver { gameCenter.submit(settings.bestScore) }
         }

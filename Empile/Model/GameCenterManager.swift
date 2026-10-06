@@ -45,6 +45,17 @@ final class GameCenterManager {
         var id: Int { rank }
     }
 
+    /// The player's own best score on the leaderboard, to get the record back after a reinstall.
+    /// - Returns: `nil` when the player has no score yet, or the leaderboard cannot be reached.
+    func loadMyScore() async -> Int? {
+        guard isAuthenticated,
+              let board = try? await GKLeaderboard.loadLeaderboards(IDs: [Self.leaderboardID]).first,
+              let (me, _, _) = try? await board.loadEntries(
+                  for: .global, timeScope: .allTime, range: NSRange(location: 1, length: 1))
+        else { return nil }
+        return me?.score
+    }
+
     /// The best players of all time, the player's own line included even when outside the top.
     func loadTop(count: Int = 25) async throws -> [Row] {
         guard let board = try await GKLeaderboard.loadLeaderboards(IDs: [Self.leaderboardID]).first else {
