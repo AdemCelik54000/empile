@@ -236,26 +236,44 @@ enum Tuning {
         static let pause: ClosedRange<TimeInterval> = 9...16
         static let warning: TimeInterval = 1.6
         static let gust: ClosedRange<TimeInterval> = 2.8...4
-        /// Push on a piece at the peak of a gust, as a share of what that piece would weigh in stone.
+        /// Push of a row of wind at the peak of a gust, as a share of the weight of a slice of stone (see `catchDepth`).
         /// A wide, well-built tower holds; a thin column a few pieces tall tips over; glass slides off.
         static let pressure: CGFloat = 0.05
         /// Added for each milestone past `startLevel`, up to `maxPressure`.
         static let pressurePerLevel: CGFloat = 0.01
         static let maxPressure: CGFloat = 0.12
-        /// Where the push lands on each piece: 0 = its middle, 1 = its top edge. Higher tips pieces over more.
-        static let pushHeight: CGFloat = 0.8
+        /// The wind blows in horizontal rows this far apart; each row pushes the first piece it meets.
+        static let rowSpacing: CGFloat = World.unit / 4
+        /// How deep into a piece a row of wind counts, for its push: the bigger, the harder the wind hits.
+        static let catchDepth: CGFloat = World.unit * 2.5
+        /// Rows start this far beyond the outermost piece.
+        static let rayMargin: CGFloat = World.unit * 4
         // Streaks.
-        static let maxStreaksPerSecond: CGFloat = 150
+        static let maxStreaksPerSecond: CGFloat = 70
+        static let maxStreaks = 90
         /// Share of the streaks shown during the warning.
         static let warningStreakShare: CGFloat = 0.2
+        /// Time a streak takes to cross the screen at full gust.
         static let streakLifetime: CGFloat = 0.9
-        static let streakLength: CGFloat = 72
-        static let streakThickness: CGFloat = 3
+        /// Length of a streak's trail, in screen points.
+        static let streakLength: CGFloat = 80
+        static let streakThickness: CGFloat = 2.5
         static let streakOpacity: CGFloat = 0.6
-        static let streakScaleRange: CGFloat = 0.5
-        /// Spread of the streak directions, in radians.
-        static let streakSpread: CGFloat = 0.08
-        /// Streaks start this share of the screen width beyond the screen center, off screen.
+        /// How far ahead of its head a streak looks for pieces in its way.
+        static let streakLookAhead: CGFloat = 10
+        /// When a piece is in the way: climb or dive speed, as a share of the streak speed, and forward speed left.
+        static let streakDeflection: CGFloat = 1.3
+        static let streakSlowdown: CGFloat = 0.35
+        /// How quickly a streak straightens again once past a piece (1/s).
+        static let streakRecovery: CGFloat = 3
+        /// A streak looks for a way round up to `streakProbeSteps × streakProbeSpacing` above and below.
+        static let streakProbeSteps = 10
+        static let streakProbeSpacing: CGFloat = World.unit / 3
+        /// Distance between two points of a streak's trail.
+        static let streakPointSpacing: CGFloat = 4
+        /// A streak fades in and out over this long.
+        static let streakFadeDuration: CGFloat = 0.15
+        /// Streak speed is set so it would cross the screen plus this share of its width.
         static let streakStartOffset: CGFloat = 0.6
         /// Streak speed while the gust is still faint, as a share of the full speed.
         static let streakBaseSpeed: CGFloat = 0.55

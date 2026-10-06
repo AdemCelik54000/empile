@@ -314,8 +314,8 @@ final class TowerScene: SKScene {
         camera = cameraRig.node
         sky.zPosition = Layer.background
         cameraRig.node.addChild(sky)
-        cameraRig.node.addChild(windEffect.node)
-        for node in [platform.node, guide.node, dust.node, powers.node, bird.node, effects.node, rope.node] {
+        for node in [platform.node, guide.node, dust.node, powers.node, bird.node, effects.node, rope.node,
+                     windEffect.node] {
             addChild(node)
         }
         refreshAppearance()
@@ -370,10 +370,10 @@ final class TowerScene: SKScene {
             }
             session.reportWind(state)
         }
-        windEffect.show(state)
+        windEffect.show(state, visible: cameraRig.visibleRect, viewWidth: size.width, deltaTime: deltaTime, in: self)
         windEffect.push(tower.blocks, wind: state,
                         pressure: Tuning.Wind.pressure(level: session.climb.milestonesReached),
-                        gravity: abs(physicsWorld.gravity.dy))
+                        gravity: abs(physicsWorld.gravity.dy), in: self)
         bird.update(deltaTime: deltaTime, isActive: session.hasBirds, blocks: tower.blocks, in: self,
                     visible: cameraRig.visibleRect)
     }
@@ -528,7 +528,6 @@ final class TowerScene: SKScene {
     private func layoutViewport() {
         guard isBuilt, size.width > 0, size.height > 0 else { return }
         sky.size = size
-        windEffect.layout(viewSize: size)
         let viewport = CameraFraming.Viewport(size: size, topInset: safeArea.top, bottomInset: safeArea.bottom)
         if hasLaidOut {
             cameraRig.setViewport(viewport)
