@@ -19,6 +19,8 @@ struct GameView: View {
     @State private var screenHeight: CGFloat = 0
     /// A power on stage over the frozen world.
     @State private var abilityStage: AbilityStage?
+    /// Changes with every power put on stage, so an old stage can never close or steer a newer one.
+    @State private var stageID = UUID()
     /// An ad for a power is on screen, or about to be.
     @State private var isWatchingAd = false
     @State private var bannerMilestone: Milestone?
@@ -58,8 +60,9 @@ struct GameView: View {
                     session: session,
                     scene: scene,
                     onPick: change,
-                    onClose: { self.abilityStage = nil }
+                    onClose: { [stageID] in closeStage(stageID) }
                 )
+                .id(stageID)
                 .transition(.opacity)
             }
         }
@@ -224,13 +227,14 @@ struct GameView: View {
     private func use(_ ability: Ability) {
         guard abilityStage == nil, session.canUse(ability) else { return }
         scene.prepareForPause()
-        abilityStage = .activating(ability)
+        showStage(.activating(ability))
+        let id = stageID
         Task {
             try? await Task.sleep(for: .seconds(Tuning.Abilities.activationDuration))
-            guard abilityStage == .activating(ability) else { return }
+            guard stageID == id, abilityStage == .activating(ability) else { return }
             switch ability {
             case .reshape, .rematerial:
-                abilityStage = .picking(ability)
+                showStage(.picking(ability))
             case .extraLife:
                 if session.useExtraLife() {
                     scene.celebrateAbility()
@@ -243,6 +247,18 @@ struct GameView: View {
                 abilityStage = nil
             }
         }
+    }
+
+    /// Puts a power on stage: always a fresh stage, whatever was there before.
+    private func showStage(_ stage: AbilityStage) {
+        stageID = UUID()
+        abilityStage = stage
+    }
+
+    /// Closes the stage `id`, unless another one has taken its place since.
+    private func closeStage(_ id: UUID) {
+        guard stageID == id else { return }
+        abilityStage = nil
     }
 
     private func change(_ id: Card.ID, with ability: Ability) -> Bool {
@@ -260,7 +276,7 @@ struct GameView: View {
             // Without ads (testers' version), the power comes straight away.
             let earned = Tuning.Ads.isEnabled ? await ads.presentRewarded() : true
             if earned, let won = session.earnAbility() {
-                abilityStage = .roulette(won: won)
+                showStage(.roulette(won: won))
             }
             isWatchingAd = false
         }
