@@ -337,6 +337,8 @@ enum Tuning {
         static let maxPullAcceleration: CGFloat = 4500
         /// The roped piece never moves faster than this (points per second), so it cannot be flung off screen.
         static let maxPullSpeed: CGFloat = 900
+        /// A piece carrying others is pulled harder, up to this many times (the weight on it, in own masses, plus one).
+        static let maxPullLoadBoost: CGFloat = 6
         /// A touch this close to a piece (screen points) still catches it.
         static let pullCatchRadius: CGFloat = 14
         /// The rope gets thinner as it stretches: width when slack, thinnest width, and the length that
