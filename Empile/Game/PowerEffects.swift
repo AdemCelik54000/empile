@@ -9,6 +9,8 @@ final class PowerEffects {
     private struct Launch {
         let spring: BlockNode
         let block: BlockNode
+        /// Which way the spring pushes: along the contact, so a level spring sends the piece straight up.
+        let direction: CGVector
     }
 
     let node = SKNode()
@@ -35,11 +37,19 @@ final class PowerEffects {
               let second = contact.bodyB.node as? BlockNode,
               abs(contact.contactNormal.dy) >= Tuning.Powers.springContactVerticality
         else { return }
+        let normal = contact.contactNormal
         if first.isArmed, second.position.y > first.position.y {
-            pendingLaunches.append(Launch(spring: first, block: second))
+            pendingLaunches.append(Launch(spring: first, block: second, direction: Self.upward(normal)))
         } else if second.isArmed, first.position.y > second.position.y {
-            pendingLaunches.append(Launch(spring: second, block: first))
+            pendingLaunches.append(Launch(spring: second, block: first, direction: Self.upward(normal)))
         }
+    }
+
+    /// The contact normal, flipped to point up and made unit length.
+    private static func upward(_ normal: CGVector) -> CGVector {
+        let sign: CGFloat = normal.dy < 0 ? -1 : 1
+        let length = max(hypot(normal.dx, normal.dy), 0.001)
+        return CGVector(dx: sign * normal.dx / length, dy: sign * normal.dy / length)
     }
 
     /// Call once per frame, after physics: fires the springs hit during the last step.
@@ -49,7 +59,10 @@ final class PowerEffects {
             launch.spring.spend(using: textures)
             launch.spring.squash(by: -Tuning.Powers.springSquash)
             if let body = launch.block.physicsBody {
-                body.velocity.dy = max(body.velocity.dy, Tuning.Powers.springSpeed(forMass: body.mass))
+                // The piece leaves along the spring, without the sideways speed or spin it landed with.
+                let speed = max(body.velocity.dy, Tuning.Powers.springSpeed(forMass: body.mass))
+                body.velocity = CGVector(dx: launch.direction.dx * speed, dy: launch.direction.dy * speed)
+                body.angularVelocity = 0
             }
             audio.play(.springBoing, volume: Tuning.Sound.springVolume)
             haptics.play(Tuning.Haptics.springBounce, spacing: Tuning.Haptics.patternSpacing)
