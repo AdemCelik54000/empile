@@ -24,9 +24,9 @@ struct AbilityBar: View {
                 scene.rotateActiveCard()
             } label: {
                 Image(systemName: "rotate.right")
-                    .font(.title.weight(.semibold))
-                    .frame(width: 60, height: 60)
-                    .contentShape(Circle())
+                    .font(.title2.weight(.semibold))
+                    .offset(y: -3)
+                    .frame(width: 44, height: 44)
             }
             .buttonStyle(.glass)
             .buttonBorderShape(.circle)
