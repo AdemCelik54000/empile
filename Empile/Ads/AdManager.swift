@@ -1,5 +1,6 @@
 import GoogleMobileAds
 import Observation
+import OSLog
 import UIKit
 import UserMessagingPlatform
 
@@ -10,6 +11,10 @@ import UserMessagingPlatform
 @MainActor
 @Observable
 final class AdManager: NSObject {
+    /// Why an ad did or did not appear: read it in Xcode's console or the Mac's Console app
+    /// (subsystem `app.empile.Empile`, category `ads`).
+    private static let log = Logger(subsystem: "app.empile.Empile", category: "ads")
+
     /// An ad to continue a game is loaded and ready.
     private(set) var isRewardedReady = false
     @ObservationIgnored private var interstitial: InterstitialAd?
@@ -27,8 +32,14 @@ final class AdManager: NSObject {
         guard Tuning.Ads.isEnabled, !isStarted else { return }
         isStarted = true
         await askForConsent()
-        guard ConsentInformation.shared.canRequestAds else { return }
+        let canRequestAds = ConsentInformation.shared.canRequestAds
+        Self.log.info("Consent: status \(Self.describe(ConsentInformation.shared.consentStatus), privacy: .public), canRequestAds \(canRequestAds, privacy: .public)")
+        guard canRequestAds else {
+            Self.log.notice("No ad will load: consent does not allow requesting ads")
+            return
+        }
         await MobileAds.shared.start()
+        Self.log.info("Ad SDK started")
         await loadInterstitial()
         await loadRewarded()
     }
@@ -44,12 +55,14 @@ final class AdManager: NSObject {
     ///   refused): the game carries on and tries again at the next opportunity.
     func present() async -> Bool {
         guard let ad = interstitial, let controller = topViewController, closing == nil else {
+            Self.log.notice("Interstitial not shown: ad ready \(self.interstitial != nil, privacy: .public), screen available \(self.topViewController != nil, privacy: .public), another ad open \(self.closing != nil, privacy: .public)")
             Task { await loadInterstitial() }
             return false
         }
         do {
             try ad.canPresent(from: controller)
         } catch {
+            Self.log.error("Interstitial cannot be presented: \(error.localizedDescription, privacy: .public)")
             interstitial = nil
             Task { await loadInterstitial() }
             return false
@@ -68,6 +81,7 @@ final class AdManager: NSObject {
     /// - Returns: Whether the player watched it long enough to earn the reward.
     func presentRewarded() async -> Bool {
         guard let ad = rewarded, let controller = topViewController, closing == nil else {
+            Self.log.notice("Rewarded ad not shown: ad ready \(self.rewarded != nil, privacy: .public), screen available \(self.topViewController != nil, privacy: .public), another ad open \(self.closing != nil, privacy: .public)")
             Task { await loadRewarded() }
             return false
         }
@@ -76,6 +90,7 @@ final class AdManager: NSObject {
         do {
             try ad.canPresent(from: controller)
         } catch {
+            Self.log.error("Rewarded ad cannot be presented: \(error.localizedDescription, privacy: .public)")
             Task { await loadRewarded() }
             return false
         }
@@ -96,7 +111,15 @@ final class AdManager: NSObject {
         else { return }
         isLoadingInterstitial = true
         defer { isLoadingInterstitial = false }
-        interstitial = try? await InterstitialAd.load(with: await AdUnits.interstitialID(), request: Request())
+        let unitID = await AdUnits.interstitialID()
+        Self.log.info("Loading interstitial, unit \(unitID, privacy: .public) (\(Self.kind(of: unitID), privacy: .public))")
+        do {
+            interstitial = try await InterstitialAd.load(with: unitID, request: Request())
+            Self.log.info("Interstitial loaded")
+        } catch {
+            interstitial = nil
+            Self.log.error("Interstitial failed to load: \(Self.describe(error), privacy: .public)")
+        }
     }
 
     private func loadRewarded() async {
@@ -105,7 +128,14 @@ final class AdManager: NSObject {
         else { return }
         isLoadingRewarded = true
         defer { isLoadingRewarded = false }
-        rewarded = try? await RewardedAd.load(with: unitID, request: Request())
+        Self.log.info("Loading rewarded ad, unit \(unitID, privacy: .public) (\(Self.kind(of: unitID), privacy: .public))")
+        do {
+            rewarded = try await RewardedAd.load(with: unitID, request: Request())
+            Self.log.info("Rewarded ad loaded")
+        } catch {
+            rewarded = nil
+            Self.log.error("Rewarded ad failed to load: \(Self.describe(error), privacy: .public)")
+        }
         isRewardedReady = rewarded != nil
     }
 
@@ -116,7 +146,29 @@ final class AdManager: NSObject {
             try await ConsentForm.loadAndPresentIfRequired(from: topViewController)
         } catch {
             // No message set up or no network: `canRequestAds` tells whether ads may go on.
+            Self.log.error("Consent form error: \(Self.describe(error), privacy: .public)")
         }
+    }
+
+    private static func kind(of unitID: String) -> String {
+        let isTest = unitID == Tuning.Ads.testInterstitialUnitID || unitID == Tuning.Ads.testRewardedUnitID
+        return isTest ? "Google test unit" : "REAL unit"
+    }
+
+    private static func describe(_ status: ConsentStatus) -> String {
+        switch status {
+        case .unknown: "unknown"
+        case .required: "required"
+        case .notRequired: "not required"
+        case .obtained: "obtained"
+        @unknown default: "other"
+        }
+    }
+
+    /// The error's domain and code as well as its text: Google's codes tell "no fill" from "bad unit ID".
+    private static func describe(_ error: Error) -> String {
+        let nsError = error as NSError
+        return "\(nsError.domain) \(nsError.code): \(nsError.localizedDescription)"
     }
 
     private var topViewController: UIViewController? {
@@ -138,6 +190,7 @@ extension AdManager: FullScreenContentDelegate {
     }
 
     func ad(_ ad: FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
+        Self.log.error("Ad failed to present: \(Self.describe(error), privacy: .public)")
         closing?.resume(returning: false)
         closing = nil
     }

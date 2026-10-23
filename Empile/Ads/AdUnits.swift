@@ -1,3 +1,4 @@
+import OSLog
 import StoreKit
 
 /// Which ad unit to use: real ads only in the version downloaded from the App Store. Xcode builds, TestFlight
@@ -13,17 +14,30 @@ enum AdUnits {
         await isAppStoreBuild ? Tuning.Ads.liveRewardedUnitID : Tuning.Ads.testRewardedUnitID
     }
 
+    private static let log = Logger(subsystem: "app.empile.Empile", category: "ads")
+
     /// Whether this install comes from the App Store. Anything unclear (Xcode, TestFlight, a receipt that
-    /// cannot be verified) counts as a test build.
+    /// cannot be verified) counts as a test build. The reason is written to the log.
     static var isAppStoreBuild: Bool {
         get async {
             #if DEBUG
-            false
+            log.info("AppTransaction not checked: debug build, Google test ads")
+            return false
             #else
-            if case .verified(let transaction)? = try? await AppTransaction.shared {
-                transaction.environment == .production
-            } else {
-                false
+            do {
+                switch try await AppTransaction.shared {
+                case .verified(let transaction):
+                    let isProduction = transaction.environment == .production
+                    log.info("AppTransaction verified, environment \(transaction.environment.rawValue, privacy: .public): \(isProduction ? "App Store build, real ads" : "not the App Store, Google test ads", privacy: .public)")
+                    return isProduction
+                case .unverified(_, let error):
+                    log.error("AppTransaction NOT verified (\(error.localizedDescription, privacy: .public)): Google test ads")
+                    return false
+                }
+            } catch {
+                let nsError = error as NSError
+                log.error("AppTransaction unavailable (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public): \(nsError.localizedDescription, privacy: .public)): Google test ads")
+                return false
             }
             #endif
         }
