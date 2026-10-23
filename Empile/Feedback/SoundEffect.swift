@@ -6,14 +6,22 @@ enum SoundEffect: CaseIterable, Sendable {
     case goldImpact
     case springBoing
     case glassShatter
-    case pickup
     case turn
+    case perfect
     case ding
+    case record
     case lifeLost
     case windGust
     case chirp
     case tensionDrone
     case gameOver
+
+    /// Where a sound comes from: a recorded file in the app, or synthesized at launch.
+    enum Source: Sendable {
+        /// File name in the `Sounds` folder, without its `.wav` extension.
+        case file(String)
+        case synth(SoundRecipe)
+    }
 
     /// The sound of a block of this kind hitting something.
     static func impact(of kind: BlockKind) -> SoundEffect {
@@ -25,23 +33,29 @@ enum SoundEffect: CaseIterable, Sendable {
         }
     }
 
-    var recipe: SoundRecipe {
+    var source: Source {
         switch self {
-        case .stoneImpact: Tuning.Sound.stoneImpact
-        case .springImpact: Tuning.Sound.springImpact
-        case .glassImpact: Tuning.Sound.glassImpact
-        case .goldImpact: Tuning.Sound.goldImpact
-        case .springBoing: Tuning.Sound.springBoing
-        case .glassShatter: Tuning.Sound.glassShatter
-        case .pickup: Tuning.Sound.pickup
-        case .turn: Tuning.Sound.turn
-        case .ding: Tuning.Sound.ding
-        case .lifeLost: Tuning.Sound.lifeLost
-        case .windGust: Tuning.Sound.windGust
-        case .chirp: Tuning.Sound.chirp
-        case .tensionDrone: Tuning.Sound.tensionDrone
-        case .gameOver: Tuning.Sound.gameOver
+        case .stoneImpact: .file("pose")
+        case .springImpact: .file("ressort")
+        case .glassImpact: .file("verre")
+        case .goldImpact: .file("or")
+        case .perfect: .file("parfait")
+        case .record: .file("record")
+        case .lifeLost: .file("vie")
+        case .springBoing: .synth(Tuning.Sound.springBoing)
+        case .glassShatter: .synth(Tuning.Sound.glassShatter)
+        case .turn: .synth(Tuning.Sound.turn)
+        case .ding: .synth(Tuning.Sound.ding)
+        case .windGust: .synth(Tuning.Sound.windGust)
+        case .chirp: .synth(Tuning.Sound.chirp)
+        case .tensionDrone: .synth(Tuning.Sound.tensionDrone)
+        case .gameOver: .synth(Tuning.Sound.gameOver)
         }
+    }
+
+    /// The synthesis recipe, for sounds made in code.
+    var recipe: SoundRecipe? {
+        if case .synth(let recipe) = source { recipe } else { nil }
     }
 
     /// Played over and over at a volume set on the fly, rather than once.

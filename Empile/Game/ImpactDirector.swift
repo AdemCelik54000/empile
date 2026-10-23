@@ -88,6 +88,7 @@ final class ImpactDirector {
     }
 
     private func playSound(for impact: Impact) {
+        guard impact.strength >= Tuning.Sound.impactMinimumStrength else { return }
         let jitter = Tuning.Sound.pitchJitter
         audio.play(
             .impact(of: impact.landing.definition.kind),

@@ -5,6 +5,18 @@ import UIKit
 enum Palette {
     static let skyTop = UIColor(light: UIColor(hex: 0xA9D8FF), dark: UIColor(hex: 0x0B0A2A))
     static let skyBottom = UIColor(light: UIColor(hex: 0xFFE1F0), dark: UIColor(hex: 0x3B1E63))
+    /// The sky as the score climbs: the first pair is the starting sky, then a new one every few thousand points.
+    static let skies: [(top: UIColor, bottom: UIColor)] = [
+        (skyTop, skyBottom),
+        (UIColor(light: UIColor(hex: 0xFFC796), dark: UIColor(hex: 0x1E0B2E)),
+         UIColor(light: UIColor(hex: 0xFF9FC4), dark: UIColor(hex: 0x7A2E5A))),
+        (UIColor(light: UIColor(hex: 0xC8B8FF), dark: UIColor(hex: 0x120A33)),
+         UIColor(light: UIColor(hex: 0xFFD6EC), dark: UIColor(hex: 0x4A2E8F))),
+        (UIColor(light: UIColor(hex: 0x8FA8FF), dark: UIColor(hex: 0x060B2E)),
+         UIColor(light: UIColor(hex: 0xE0D4FF), dark: UIColor(hex: 0x1F3A8A))),
+        (UIColor(light: UIColor(hex: 0xFFE59A), dark: UIColor(hex: 0x1F1408)),
+         UIColor(light: UIColor(hex: 0xFFC1A1), dark: UIColor(hex: 0x6E3B14))),
+    ]
     static let platform = UIColor(light: UIColor(hex: 0x3D3A8C), dark: UIColor(hex: 0x5A4FB8))
     static let pillar = UIColor(light: UIColor(hex: 0x7A74D6), dark: UIColor(hex: 0x2C2466))
     static let guide = UIColor.label

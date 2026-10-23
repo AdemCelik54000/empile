@@ -79,6 +79,9 @@ struct LeaderboardView: View {
         do {
             phase = .loaded(try await gameCenter.loadTop())
         } catch {
+            #if DEBUG
+            print("Leaderboard error:", error)
+            #endif
             phase = .failed
         }
     }

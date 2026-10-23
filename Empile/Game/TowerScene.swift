@@ -31,6 +31,9 @@ final class TowerScene: SKScene {
     private let effects = PlacementEffects()
     private var wind = TowerScene.makeWind()
     private let sky = SKSpriteNode()
+    /// The previous sky, fading out over the new one when the score reaches another stage.
+    private let fadingSky = SKSpriteNode()
+    private var skyStage = 0
     /// Glowing motes drifting up through the sky, behind the tower.
     private let motes = SKEmitterNode()
     private var slowMotion = SlowMotion()
@@ -122,7 +125,6 @@ final class TowerScene: SKScene {
         drag.begin(block, at: point, time: time, in: self, zone: holdZone(), cameraScale: cameraRig.scale,
                    snaps: isNew)
         haptics.play(Tuning.Haptics.pickup)
-        audio.play(.pickup, volume: Tuning.Sound.pickupVolume)
         return true
     }
 
@@ -246,7 +248,6 @@ final class TowerScene: SKScene {
         guard let caught else { return false }
         rope.attach(to: caught, at: point, fingerInView: viewPoint)
         haptics.play(Tuning.Haptics.pickup)
-        audio.play(.pickup, volume: Tuning.Sound.pickupVolume)
         return true
     }
 
@@ -328,6 +329,9 @@ final class TowerScene: SKScene {
         camera = cameraRig.node
         sky.zPosition = Layer.background
         cameraRig.node.addChild(sky)
+        fadingSky.zPosition = Layer.background + 0.5
+        fadingSky.alpha = 0
+        cameraRig.node.addChild(fadingSky)
         setUpMotes()
         cameraRig.node.addChild(motes)
         for node in [platform.node, guide.node, dust.node, powers.node, bird.node, effects.node, rope.node,
@@ -409,6 +413,7 @@ final class TowerScene: SKScene {
         if update.becameStable && isPlaying {
             breakOverloadedGlass()
         }
+        updateSkyStage()
         let floors = ClimbProgress.floors(height: tower.stableTop - Platform.surfaceY, unit: Tuning.World.unit)
         if floors != session.climb.floors, !session.reportHeight(floors).isEmpty {
             celebrateMilestone()
@@ -433,7 +438,7 @@ final class TowerScene: SKScene {
                 block.flash()
                 let semitones = min(Float(placement.streak - 1) * Tuning.Celebration.semitonesPerStreak,
                                     Tuning.Celebration.maxChimeSemitones)
-                audio.play(.ding, volume: Tuning.Celebration.chimeVolume, semitones: semitones)
+                audio.play(.perfect, volume: Tuning.Celebration.chimeVolume, semitones: semitones)
                 haptics.play(Tuning.Haptics.perfect)
             }
         }
@@ -444,8 +449,7 @@ final class TowerScene: SKScene {
         let top = CGPoint(x: Platform.frame.midX, y: tower.stableTop + Tuning.World.unit)
         effects.shower(at: top, count: Tuning.Celebration.recordSparkles)
         effects.announce(String(localized: "Nouveau record !"), at: CGPoint(x: top.x, y: top.y + Tuning.World.unit))
-        playNotes(Tuning.Sound.milestoneArpeggio, effect: .ding, volume: Tuning.Celebration.recordVolume,
-                  spacing: Tuning.Sound.arpeggioSpacing)
+        audio.play(.record, volume: Tuning.Celebration.recordVolume)
         haptics.play(Tuning.Haptics.record, spacing: Tuning.Haptics.patternSpacing)
     }
 
@@ -466,8 +470,7 @@ final class TowerScene: SKScene {
     private func loseLife() {
         session.loseLife()
         if session.isPlaying {
-            playNotes(Tuning.Sound.lifeLostNotes, effect: .lifeLost, volume: Tuning.Sound.lifeLostVolume,
-                      spacing: Tuning.Sound.lifeLostSpacing)
+            audio.play(.lifeLost, volume: Tuning.Sound.lifeLostVolume)
         } else {
             playNotes(Tuning.Sound.gameOverNotes, effect: .gameOver, volume: Tuning.Sound.gameOverVolume,
                       spacing: Tuning.Sound.gameOverSpacing)
@@ -563,6 +566,7 @@ final class TowerScene: SKScene {
     private func layoutViewport() {
         guard isBuilt, size.width > 0, size.height > 0 else { return }
         sky.size = size
+        fadingSky.size = size
         motes.particlePositionRange = CGVector(dx: size.width, dy: size.height)
         let viewport = CameraFraming.Viewport(size: size, topInset: safeArea.top, bottomInset: safeArea.bottom)
         if hasLaidOut {
@@ -575,11 +579,31 @@ final class TowerScene: SKScene {
         }
     }
 
+    private func paintSky() {
+        let colors = Palette.skies[skyStage]
+        backgroundColor = textures.resolve(colors.bottom)
+        sky.texture = textures.verticalGradient(top: colors.top, bottom: colors.bottom)
+    }
+
+    /// A new sky every few thousand points: the old one stays on top and fades away.
+    private func updateSkyStage() {
+        let stage = SkyStage.index(forScore: session.score, step: Tuning.Sky.pointsPerStage,
+                                   count: Palette.skies.count)
+        guard stage != skyStage, isBuilt else { return }
+        skyStage = stage
+        fadingSky.removeAllActions()
+        fadingSky.texture = sky.texture
+        fadingSky.alpha = 1
+        paintSky()
+        fadingSky.run(.fadeOut(withDuration: Tuning.Sky.transitionDuration))
+    }
+
     private func refreshAppearance() {
         guard isBuilt, let view else { return }
         textures.configure(style: style, displayScale: view.contentScaleFactor)
-        backgroundColor = textures.resolve(Palette.skyBottom)
-        sky.texture = textures.verticalGradient(top: Palette.skyTop, bottom: Palette.skyBottom)
+        fadingSky.removeAllActions()
+        fadingSky.alpha = 0
+        paintSky()
         motes.particleTexture = textures.sparkle(size: Tuning.Look.moteSize)
         motes.particleColor = textures.resolve(Palette.mote)
         platform.refreshTextures(using: textures)

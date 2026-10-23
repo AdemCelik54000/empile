@@ -117,19 +117,49 @@ actor AudioManager {
     }
 
     private func makeBuffer(for effect: SoundEffect, format: AVAudioFormat) -> AVAudioPCMBuffer? {
-        let samples = SoundSynth.render(
-            effect.recipe,
-            sampleRate: Tuning.Sound.sampleRate,
-            peak: Tuning.Sound.peakLevel,
-            seed: effect.seed
-        )
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)),
-              let channel = buffer.floatChannelData?[0]
-        else { return nil }
-        buffer.frameLength = buffer.frameCapacity
-        for (index, sample) in samples.enumerated() {
-            channel[index] = sample
+        switch effect.source {
+        case .file(let name):
+            return AudioManager.loadBuffer(named: name, format: format)
+        case .synth(let recipe):
+            let samples = SoundSynth.render(
+                recipe,
+                sampleRate: Tuning.Sound.sampleRate,
+                peak: Tuning.Sound.peakLevel,
+                seed: effect.seed
+            )
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)),
+                  let channel = buffer.floatChannelData?[0]
+            else { return nil }
+            buffer.frameLength = buffer.frameCapacity
+            for (index, sample) in samples.enumerated() {
+                channel[index] = sample
+            }
+            return buffer
         }
-        return buffer
+    }
+
+    /// Reads a sound file from the app and converts it to the engine's format (mono, same sample rate).
+    static func loadBuffer(named name: String, format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        guard let url = Bundle.main.url(forResource: name, withExtension: "wav"),
+              let file = try? AVAudioFile(forReading: url),
+              let source = AVAudioPCMBuffer(pcmFormat: file.processingFormat,
+                                            frameCapacity: AVAudioFrameCount(file.length)),
+              (try? file.read(into: source)) != nil,
+              let converter = AVAudioConverter(from: file.processingFormat, to: format)
+        else { return nil }
+        let ratio = format.sampleRate / file.processingFormat.sampleRate
+        let capacity = AVAudioFrameCount((Double(source.frameLength) * ratio).rounded(.up)) + 1
+        guard let output = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return nil }
+        var isConsumed = false
+        let status = converter.convert(to: output, error: nil) { _, inputStatus in
+            if isConsumed {
+                inputStatus.pointee = .endOfStream
+                return nil
+            }
+            isConsumed = true
+            inputStatus.pointee = .haveData
+            return source
+        }
+        return status == .error ? nil : output
     }
 }

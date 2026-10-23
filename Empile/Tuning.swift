@@ -80,9 +80,9 @@ enum Tuning {
         /// catching on them.
         static let bodyChamfer: CGFloat = 5
         /// Below these speeds a block counts as still.
-        static let calm = CalmThreshold(linearSpeed: 2, angularSpeed: 0.03)
+        static let calm = CalmThreshold(linearSpeed: 10, angularSpeed: 0.2)
         /// How long every block must stay still before the tower counts as stable.
-        static let settleDuration: TimeInterval = 0.5
+        static let settleDuration: TimeInterval = 0.35
         /// Above this speed a block uses continuous collision so it can never pass through another.
         static let preciseCollisionSpeed: CGFloat = 250
         /// Once the tower is stable, put every body to sleep: no slow creeping, no micro jitter.
@@ -229,10 +229,11 @@ enum Tuning {
         static let flashStrength: CGFloat = 0.65
         static let flashPop: CGFloat = 0.08
         // A rising chime: one semitone higher with each perfect placement in a row.
-        static let chimeVolume: Float = 0.5
-        static let semitonesPerStreak: Float = 2
-        static let maxChimeSemitones: Float = 16
-        static let recordVolume: Float = 0.65
+        static let chimeVolume: Float = 0.65
+        /// Each perfect drop in a row rings one semitone higher, up to an octave.
+        static let semitonesPerStreak: Float = 1
+        static let maxChimeSemitones: Float = 12
+        static let recordVolume: Float = 0.9
     }
 
     enum Wind {
@@ -283,7 +284,7 @@ enum Tuning {
         static let streakStartOffset: CGFloat = 0.6
         /// Streak speed while the gust is still faint, as a share of the full speed.
         static let streakBaseSpeed: CGFloat = 0.55
-        static let gustVolume: Float = 0.12
+        static let gustVolume: Float = 0.04
 
         static func pressure(level: Int) -> CGFloat {
             min(maxPressure, Wind.pressure + pressurePerLevel * CGFloat(max(0, level - startLevel)))
@@ -542,13 +543,15 @@ enum Tuning {
         /// Sounds that can overlap.
         static let voices = 8
         static let peakLevel: Float = 0.9
-        static let impactVolume: ClosedRange<Float> = 0.12...1
+        /// Pieces landing: kept below the perfect-drop and record sounds.
+        static let impactVolume: ClosedRange<Float> = 0.1...0.6
+        /// Softer knocks (pieces settling, brushing) stay silent: only real landings are heard.
+        static let impactMinimumStrength: CGFloat = 0.1
         /// Pitch change each time the block area doubles (negative: bigger is lower).
         static let semitonesPerSizeDoubling: Float = -2
         /// Random detune, in semitones, so repeated impacts never sound identical.
-        static let pitchJitter: Float = 0.8
-        static let pickupVolume: Float = 0.22
-        static let turnVolume: Float = 0.3
+        static let pitchJitter: Float = 0.5
+        static let turnVolume: Float = 0.18
         static let springVolume: Float = 0.7
         static let shatterVolume: Float = 0.9
         static let lifeLostVolume: Float = 0.7
@@ -556,39 +559,13 @@ enum Tuning {
         static let resultVolume: Float = 0.6
         /// Notes of the milestone arpeggio, then of a lost piece's fall (semitones).
         static let milestoneArpeggio: [Float] = [0, 4, 7, 12, 16]
-        static let lifeLostNotes: [Float] = [-5, -12]
         /// The sad run down when the last piece is lost (semitones).
         static let gameOverNotes: [Float] = [0, -3, -7, -12]
         static let gameOverSpacing: TimeInterval = 0.26
         /// Played together when the shop sells something.
         static let purchaseNotes: [Float] = [7, 12]
         static let arpeggioSpacing: TimeInterval = 0.08
-        static let lifeLostSpacing: TimeInterval = 0.28
 
-        /// A dull knock: low resonances that die fast, plus a short gritty click.
-        static let stoneImpact = SoundRecipe(
-            modes: [
-                .init(frequency: 180, amplitude: 1, decay: 0.05),
-                .init(frequency: 395, amplitude: 0.55, decay: 0.032),
-                .init(frequency: 830, amplitude: 0.3, decay: 0.018),
-                .init(frequency: 1720, amplitude: 0.14, decay: 0.009),
-            ],
-            noise: .init(amplitude: 0.7, decay: 0.006, brightness: 0.35),
-            duration: 0.3,
-            attack: 0.0008,
-            release: 0.02
-        )
-        /// A soft, short pop.
-        static let pickup = SoundRecipe(
-            modes: [
-                .init(frequency: 1250, amplitude: 1, decay: 0.022),
-                .init(frequency: 2500, amplitude: 0.25, decay: 0.01),
-            ],
-            noise: .init(amplitude: 0, decay: 0.001, brightness: 0),
-            duration: 0.09,
-            attack: 0.002,
-            release: 0.01
-        )
         /// A small mechanical click.
         static let turn = SoundRecipe(
             modes: [
@@ -599,17 +576,6 @@ enum Tuning {
             duration: 0.05,
             attack: 0.0005,
             release: 0.008
-        )
-        /// A soft thump, lighter than stone.
-        static let springImpact = SoundRecipe(
-            modes: [
-                .init(frequency: 240, amplitude: 1, decay: 0.04),
-                .init(frequency: 520, amplitude: 0.4, decay: 0.025),
-            ],
-            noise: .init(amplitude: 0.35, decay: 0.004, brightness: 0.25),
-            duration: 0.22,
-            attack: 0.001,
-            release: 0.02
         )
         /// The coil firing: a tone that wobbles and dies out.
         static let springBoing = SoundRecipe(
@@ -622,18 +588,6 @@ enum Tuning {
             attack: 0.002,
             release: 0.06,
             wobble: .init(depth: 0.35, rate: 14, decay: 0.25)
-        )
-        /// A bright, short tink.
-        static let glassImpact = SoundRecipe(
-            modes: [
-                .init(frequency: 2350, amplitude: 1, decay: 0.09),
-                .init(frequency: 3720, amplitude: 0.5, decay: 0.06),
-                .init(frequency: 5800, amplitude: 0.25, decay: 0.035),
-            ],
-            noise: .init(amplitude: 0.25, decay: 0.002, brightness: 0.8),
-            duration: 0.3,
-            attack: 0.0005,
-            release: 0.03
         )
         /// Glass breaking: a bright crash with ringing fragments.
         static let glassShatter = SoundRecipe(
@@ -661,18 +615,6 @@ enum Tuning {
             attack: 0.001,
             release: 0.08
         )
-        /// A deep swell when a piece is lost.
-        static let lifeLost = SoundRecipe(
-            modes: [
-                .init(frequency: 98, amplitude: 1, decay: 0.35),
-                .init(frequency: 196, amplitude: 0.5, decay: 0.25),
-                .init(frequency: 294, amplitude: 0.2, decay: 0.15),
-            ],
-            noise: .init(amplitude: 0.1, decay: 0.03, brightness: 0.1),
-            duration: 0.8,
-            attack: 0.01,
-            release: 0.1
-        )
         /// A mellow, falling-away tone for the end of a game.
         static let gameOver = SoundRecipe(
             modes: [
@@ -684,18 +626,6 @@ enum Tuning {
             duration: 1,
             attack: 0.01,
             release: 0.2
-        )
-        /// A bright, ringing clink of metal.
-        static let goldImpact = SoundRecipe(
-            modes: [
-                .init(frequency: 1320, amplitude: 1, decay: 0.14),
-                .init(frequency: 2960, amplitude: 0.45, decay: 0.09),
-                .init(frequency: 4410, amplitude: 0.2, decay: 0.05),
-            ],
-            noise: .init(amplitude: 0.2, decay: 0.002, brightness: 0.7),
-            duration: 0.4,
-            attack: 0.0005,
-            release: 0.04
         )
         /// A bird: a short high tweet that slides in pitch.
         static let chirp = SoundRecipe(
@@ -799,6 +729,13 @@ enum Tuning {
         static let cardSize: CGFloat = 54
         /// A drag must move this far before it picks the block up; shorter is a tap that selects it.
         static let dragThreshold: CGFloat = 4
+    }
+
+    enum Sky {
+        /// The sky takes a new color each time the score passes another multiple of this.
+        static let pointsPerStage = 1000
+        /// How long the old sky takes to fade into the new one.
+        static let transitionDuration: TimeInterval = 2.5
     }
 
     enum Debug {

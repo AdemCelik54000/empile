@@ -7,6 +7,11 @@ enum TutorialStep: Equatable {
     case aim(canTurn: Bool)
 }
 
+/// The app runs on a Mac (Apple silicon): a mouse and the keyboard replace the fingers.
+enum MacInput {
+    static let isActive = ProcessInfo.processInfo.isiOSAppOnMac
+}
+
 /// A pulsing ring, drawn where the player should touch.
 struct TutorialRing: View {
     var label: String?
@@ -54,7 +59,7 @@ struct TutorialRings: View {
                     }
                 }
             case .aim(let canTurn):
-                if canTurn {
+                if canTurn && !MacInput.isActive {
                     TutorialRing(label: "2")
                         .position(x: proxy.size.width * 0.78, y: proxy.size.height * 0.55)
                         .transition(.scale.combined(with: .opacity))
@@ -75,12 +80,23 @@ struct TutorialBubble: View {
         VStack(alignment: .leading, spacing: 8) {
             switch step {
             case .take:
-                Label("Touchez l'écran pour prendre la pièce", systemImage: "hand.tap.fill")
+                if MacInput.isActive {
+                    Label("Cliquez sur la pièce pour la prendre", systemImage: "cursorarrow.click")
+                } else {
+                    Label("Touchez l'écran pour prendre la pièce", systemImage: "hand.tap.fill")
+                }
             case .aim(let canTurn):
-                Label("Glissez pour viser, lâchez pour poser", systemImage: "hand.draw.fill")
-                if canTurn {
-                    Label("Gardez le doigt posé et touchez avec un 2ᵉ doigt pour tourner la pièce",
-                          systemImage: "rotate.right.fill")
+                if MacInput.isActive {
+                    Label("Glissez pour viser, relâchez pour poser", systemImage: "cursorarrow.motionlines")
+                    if canTurn {
+                        Label("Appuyez sur Espace pour tourner la pièce", systemImage: "rotate.right.fill")
+                    }
+                } else {
+                    Label("Glissez pour viser, lâchez pour poser", systemImage: "hand.draw.fill")
+                    if canTurn {
+                        Label("Gardez le doigt posé et touchez avec un 2ᵉ doigt pour tourner la pièce",
+                              systemImage: "rotate.right.fill")
+                    }
                 }
             }
         }

@@ -30,6 +30,7 @@ struct AbilityBar: View {
             }
             .buttonStyle(.glass)
             .buttonBorderShape(.circle)
+            .keyboardShortcut(.space, modifiers: [])
             .disabled(!session.canRotate)
             .accessibilityLabel(Text("Pivoter la pièce"))
             .accessibilityHint(Text("Tourne d'un quart de tour la pièce à poser."))

@@ -1,3 +1,4 @@
+import AVFoundation
 import Testing
 @testable import Empile
 
@@ -5,22 +6,25 @@ import Testing
 struct SoundSynthTests {
     let sampleRate = 44_100.0
 
+    private static let synthesized = SoundEffect.allCases.filter { $0.recipe != nil }
+
     private func render(_ effect: SoundEffect) -> [Float] {
-        SoundSynth.render(effect.recipe, sampleRate: sampleRate, peak: 0.9, seed: effect.seed)
+        guard let recipe = effect.recipe else { return [] }
+        return SoundSynth.render(recipe, sampleRate: sampleRate, peak: 0.9, seed: effect.seed)
     }
 
-    @Test(arguments: SoundEffect.allCases)
+    @Test(arguments: synthesized)
     func lastsAsLongAsItsRecipe(effect: SoundEffect) {
-        #expect(render(effect).count == Int(effect.recipe.duration * sampleRate))
+        #expect(render(effect).count == Int((effect.recipe?.duration ?? 0) * sampleRate))
     }
 
-    @Test(arguments: SoundEffect.allCases)
+    @Test(arguments: synthesized)
     func peaksExactlyAtTheRequestedLevel(effect: SoundEffect) {
         let loudest = render(effect).map(abs).max() ?? 0
         #expect(abs(loudest - 0.9) < 0.0001)
     }
 
-    @Test(arguments: SoundEffect.allCases.filter { !$0.loops })
+    @Test(arguments: synthesized.filter { !$0.loops })
     func startsAndEndsSilentSoItNeverClicks(effect: SoundEffect) {
         let samples = render(effect)
         #expect(abs(samples.first ?? 1) < 0.01)
@@ -28,14 +32,14 @@ struct SoundSynthTests {
     }
 
     @Test func impactIsLoudAtFirstThenDiesAway() {
-        let samples = render(.stoneImpact)
+        let samples = render(.turn)
         let quarter = samples.count / 4
         let head = samples[..<quarter].map(abs).max() ?? 0
         let tail = samples[(3 * quarter)...].map(abs).max() ?? 1
         #expect(tail < head / 10)
     }
 
-    @Test(arguments: SoundEffect.allCases.filter(\.loops))
+    @Test(arguments: synthesized.filter(\.loops))
     func loopsJoinWithoutAJump(effect: SoundEffect) {
         let samples = render(effect)
         let first = samples.first ?? 0
@@ -57,6 +61,16 @@ struct SoundSynthTests {
     }
 
     @Test func sameSoundOnEveryLaunch() {
-        #expect(render(.stoneImpact) == render(.stoneImpact))
+        #expect(render(.glassShatter) == render(.glassShatter))
+    }
+
+    @Test(arguments: SoundEffect.allCases)
+    func recordedSoundsShipWithTheApp(effect: SoundEffect) {
+        guard case .file(let name) = effect.source else { return }
+        #expect(Bundle.main.url(forResource: name, withExtension: "wav") != nil)
+        let format = AVAudioFormat(standardFormatWithSampleRate: Tuning.Sound.sampleRate, channels: 1)!
+        let buffer = AudioManager.loadBuffer(named: name, format: format)
+        #expect((buffer?.frameLength ?? 0) > 0)
+        #expect(buffer?.format.channelCount == 1)
     }
 }
