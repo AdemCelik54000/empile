@@ -13,6 +13,8 @@ struct RootView: View {
     @State private var scene: TowerScene
     @State private var ads = AdManager()
     @State private var gameCenter = GameCenterManager()
+    @State private var connectivity = ConnectivityMonitor()
+    @State private var updates = UpdateChecker()
     @State private var screen = Screen.home
     @State private var isPauseMenuShown = false
     @State private var isSettingsShown = false
@@ -58,10 +60,17 @@ struct RootView: View {
                     onLeaderboard: { openLeaderboard() },
                     onSettings: { isSettingsShown = true }
                 )
+                .accessibilityHidden(blocker != nil)
                 .transition(.opacity)
+            }
+
+            if let blocker {
+                BlockerView(blocker: blocker)
+                    .transition(.opacity)
             }
         }
         .animation(.spring(duration: 0.5, bounce: 0.1), value: screen)
+        .animation(.easeInOut(duration: 0.3), value: blocker)
         .animation(.spring(duration: 0.35, bounce: 0.15), value: isPauseMenuShown)
         .tint(Color(uiColor: Palette.accent))
         .sheet(isPresented: $isSettingsShown) {
@@ -74,6 +83,14 @@ struct RootView: View {
                 .tint(Color(uiColor: Palette.accent))
         }
         .task { await ads.start() }
+        .task {
+            connectivity.start()
+            await updates.check()
+        }
+        .onChange(of: connectivity.isOnline) { _, isOnline in
+            // The check at launch fails without a connection: try again as soon as it is back.
+            if isOnline { Task { await updates.check() } }
+        }
         .task {
             gameCenter.authenticate()
             gameCenter.submit(settings.bestScore)
@@ -95,11 +112,22 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 scene.resumeFeedback()
+                // A game left open for days may have been updated on the store in the meantime.
+                if screen == .home { Task { await updates.check() } }
             } else if screen == .game && session.isPlaying {
                 // Leaving the app mid-round: come back to the pause menu, never to a running tower.
                 pause()
             }
         }
+    }
+
+    /// Only blocks from the home screen: a game already started is never cut, the block waits for its end.
+    private var blocker: PlayBlocker? {
+        PlayBlocker.current(
+            isOnline: connectivity.isOnline,
+            requiredUpdate: updates.requiredUpdate,
+            isInGame: screen == .game
+        )
     }
 
     private func play() {
