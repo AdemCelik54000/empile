@@ -34,6 +34,8 @@ final class GameSession {
     /// Points earned this game: every piece placed, multiplied by the combo.
     private(set) var score = 0
     private(set) var combo = Combo()
+    /// Some piece in the tower can still move: the freeze power has something to freeze.
+    private(set) var hasLooseBlocks = false
 
     @ObservationIgnored private let startingSupply: PieceSupply
     @ObservationIgnored private var supply: PieceSupply
@@ -81,6 +83,7 @@ final class GameSession {
         score = 0
         combo = Combo()
         hand = []
+        hasLooseBlocks = false
         heldCardID = nil
         phase = .playing
         refillHand()
@@ -172,22 +175,37 @@ final class GameSession {
     func canUse(_ ability: Ability) -> Bool {
         guard isPlaying, heldCardID == nil, abilities.count(of: ability) > 0 else { return false }
         switch ability {
-        case .reshape, .rematerial: return true
+        case .reshape: return true
+        case .freeze: return hasLooseBlocks
         case .pull: return pullTimeLeft == nil
         case .extraLife: return lives < Tuning.Abilities.maxLives
         }
     }
 
-    /// Gives a piece another shape (`.reshape`) or a random material (`.rematerial`).
+    /// Gives a piece another shape (`.reshape`).
     /// - Returns: Whether the power was used.
     @discardableResult
     func change(_ id: Card.ID, with ability: Ability) -> Bool {
         guard ability.needsPiece, canUse(ability), let index = hand.firstIndex(where: { $0.id == id }),
               abilities.use(ability)
         else { return false }
-        hand[index] = ability == .reshape
-            ? supply.reshaped(hand[index], using: &generator)
-            : supply.rematerialized(hand[index], using: &generator)
+        hand[index] = supply.reshaped(hand[index], using: &generator)
+        return true
+    }
+
+    /// The scene tells whether some piece of the tower can still move.
+    func reportLooseBlocks(_ hasLoose: Bool) {
+        if hasLoose != hasLooseBlocks {
+            hasLooseBlocks = hasLoose
+        }
+    }
+
+    /// The scene freezes the tower right after.
+    /// - Returns: Whether the power was used.
+    @discardableResult
+    func useFreeze() -> Bool {
+        guard canUse(.freeze), abilities.use(.freeze) else { return false }
+        hasLooseBlocks = false
         return true
     }
 

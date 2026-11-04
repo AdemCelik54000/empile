@@ -4,7 +4,7 @@ import SwiftUI
 enum AbilityStage: Equatable {
     /// Every power starts the same way: the screen dims and its icon bursts out in the middle.
     case activating(Ability)
-    /// A shape or material change: the player picks the piece to change.
+    /// A shape change: the player picks the piece to change.
     case picking(Ability)
     /// After an ad: a roulette over the four powers stops on the one won.
     case roulette(won: Ability)
@@ -43,44 +43,128 @@ struct AbilityStageView: View {
     }
 }
 
-/// The icon of a power bursting out: it pops up, a ring of light spreads out from it, and its name appears.
+/// The power bursting out in its own color: rays spin behind it, shockwaves and sparks fly out, the medal spins
+/// in and its name slams down. Nothing more to read.
 private struct AbilityBurst: View {
     let ability: Ability
     @State private var isOut = false
 
     var body: some View {
-        VStack(spacing: 18) {
-            ZStack {
+        ZStack {
+            RadialGradient(colors: [ability.color.opacity(0.55), .clear], center: .center, startRadius: 10,
+                           endRadius: 320)
+                .scaleEffect(isOut ? 1.15 : 0.3)
+                .opacity(isOut ? 1 : 0)
+                .animation(.easeOut(duration: 0.5), value: isOut)
+                .ignoresSafeArea()
+            BurstRays(color: ability.color)
+                .frame(width: 520, height: 520)
+                .scaleEffect(isOut ? 1 : 0.2)
+                .opacity(isOut ? 0.9 : 0)
+                .animation(.spring(duration: 0.6, bounce: 0.3), value: isOut)
+                // Wider than the screen: drawn over the edges without widening the layout.
+                .frame(width: 0, height: 0)
+            ForEach(0..<3) { wave in
                 Circle()
-                    .stroke(.tint, lineWidth: 6)
+                    .stroke(ability.color, lineWidth: 8 - CGFloat(wave) * 2)
                     .frame(width: 130, height: 130)
-                    .scaleEffect(isOut ? 1.9 : 0.6)
-                    .opacity(isOut ? 0 : 0.9)
-                    .animation(.easeOut(duration: 0.6), value: isOut)
-                AbilityMedal(ability: ability, size: 120)
-                    .keyframeAnimator(initialValue: 0.2, trigger: isOut) { content, scale in
-                        content.scaleEffect(scale)
+                    .scaleEffect(isOut ? 3.2 : 0.5)
+                    .opacity(isOut ? 0 : 0.95)
+                    .animation(.easeOut(duration: 0.75).delay(Double(wave) * 0.12), value: isOut)
+            }
+            BurstSparks(color: ability.color, isOut: isOut)
+            VStack(spacing: 22) {
+                AbilityMedal(ability: ability, size: 128)
+                    .keyframeAnimator(initialValue: BurstPose(), trigger: isOut) { content, pose in
+                        content
+                            .scaleEffect(pose.scale)
+                            .rotationEffect(.degrees(pose.spin))
                     } keyframes: { _ in
-                        SpringKeyframe(1.25, duration: 0.22)
-                        SpringKeyframe(1, duration: 0.4, spring: .bouncy)
+                        KeyframeTrack(\.scale) {
+                            SpringKeyframe(1.4, duration: 0.22)
+                            SpringKeyframe(0.92, duration: 0.18)
+                            SpringKeyframe(1, duration: 0.35, spring: .bouncy)
+                        }
+                        KeyframeTrack(\.spin) {
+                            CubicKeyframe(20, duration: 0.3)
+                            SpringKeyframe(0, duration: 0.45, spring: .bouncy)
+                        }
                     }
-            }
-            VStack(spacing: 4) {
+                    .symbolEffect(.bounce, value: isOut)
                 Text(ability.title)
-                    .font(.largeTitle.weight(.heavy))
-                    .fontDesign(.rounded)
-                Text(ability.summary)
-                    .font(.subheadline)
-                    .multilineTextAlignment(.center)
-                    .opacity(0.85)
+                    .font(.system(size: 56, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .shadow(color: ability.color, radius: 18)
+                    .shadow(color: ability.color.opacity(0.8), radius: 4)
+                    .scaleEffect(isOut ? 1 : 2.6)
+                    .opacity(isOut ? 1 : 0)
+                    .animation(.spring(duration: 0.35, bounce: 0.45).delay(0.15), value: isOut)
             }
-            .foregroundStyle(.white)
-            .opacity(isOut ? 1 : 0)
-            .offset(y: isOut ? 0 : 12)
-            .animation(.spring(duration: 0.4).delay(0.12), value: isOut)
         }
         .onAppear { isOut = true }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(ability.title))
+    }
+}
+
+/// The medal's pop: how big it is and how far it has turned.
+private struct BurstPose {
+    var scale: CGFloat = 0.1
+    var spin: Double = -200
+}
+
+/// Light rays turning slowly behind a power.
+private struct BurstRays: View {
+    let color: Color
+    private let count = 14
+
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            let angle = timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 12) / 12 * 360
+            Canvas { context, size in
+                let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                let radius = min(size.width, size.height) / 2
+                let half = Double.pi / Double(count) * 0.45
+                for ray in 0..<count {
+                    let middle = Double(ray) / Double(count) * 2 * .pi
+                    var wedge = Path()
+                    wedge.move(to: center)
+                    wedge.addArc(center: center, radius: radius, startAngle: .radians(middle - half),
+                                 endAngle: .radians(middle + half), clockwise: false)
+                    wedge.closeSubpath()
+                    context.fill(wedge, with: .radialGradient(
+                        Gradient(colors: [color.opacity(0.7), color.opacity(0)]),
+                        center: center, startRadius: 0, endRadius: radius))
+                }
+            }
+            .rotationEffect(.degrees(angle))
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// Sparks thrown out in every direction, each its own distance and size, fading as they go.
+private struct BurstSparks: View {
+    let color: Color
+    let isOut: Bool
+    private let count = 22
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<count, id: \.self) { index in
+                let angle = Double(index) / Double(count) * 2 * .pi + Double(index % 3) * 0.2
+                let distance = 140 + CGFloat((index * 37) % 90)
+                Image(systemName: index.isMultiple(of: 3) ? "sparkle" : "circle.fill")
+                    .font(.system(size: index.isMultiple(of: 3) ? 22 : CGFloat(6 + index % 4 * 2)))
+                    .foregroundStyle(index.isMultiple(of: 2) ? color : .white)
+                    .shadow(color: color, radius: 6)
+                    .offset(x: isOut ? cos(angle) * distance : 0, y: isOut ? sin(angle) * distance : 0)
+                    .scaleEffect(isOut ? 0.4 : 1.2)
+                    .opacity(isOut ? 0 : 1)
+                    .animation(.easeOut(duration: 0.8 + Double(index % 5) * 0.06), value: isOut)
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -94,8 +178,13 @@ struct AbilityMedal: View {
             .font(.system(size: size * 0.42, weight: .bold))
             .foregroundStyle(.white)
             .frame(width: size, height: size)
-            .background(.tint, in: .circle)
-            .shadow(color: Color(uiColor: Palette.accent).opacity(0.6), radius: size * 0.2)
+            .background(
+                LinearGradient(colors: [ability.color.mix(with: .white, by: 0.25), ability.color],
+                               startPoint: .top, endPoint: .bottom),
+                in: .circle
+            )
+            .overlay(Circle().stroke(.white.opacity(0.5), lineWidth: max(2, size * 0.03)))
+            .shadow(color: ability.color.opacity(0.8), radius: size * 0.25)
     }
 }
 
@@ -116,7 +205,7 @@ private struct PiecePicker: View {
     var body: some View {
         VStack(spacing: 20) {
             AbilityMedal(ability: ability, size: 64)
-            Text(changedID == nil ? "Choisissez une pièce" : "C'est fait !")
+            Text(changedID == nil ? "Laquelle ?" : "Hop !")
                 .font(.title2.weight(.bold))
                 .fontDesign(.rounded)
                 .foregroundStyle(.white)
@@ -148,7 +237,7 @@ private struct PiecePicker: View {
                         .background(.regularMaterial, in: .rect(cornerRadius: 20))
                         .overlay {
                             RoundedRectangle(cornerRadius: 20)
-                                .stroke(.tint, lineWidth: changedID == card.id ? 3 : 0)
+                                .stroke(ability.color, lineWidth: changedID == card.id ? 3 : 0)
                         }
                         .scaleEffect(changedID == card.id ? 1.08 : 1)
                         .opacity(changedID == nil || changedID == card.id ? 1 : 0.4)
@@ -168,6 +257,18 @@ private struct PiecePicker: View {
     }
 }
 
+extension Ability {
+    /// Each power has its own color, from its button to its burst.
+    var color: Color {
+        switch self {
+        case .reshape: Color(red: 0.62, green: 0.38, blue: 1)
+        case .freeze: Color(red: 0.2, green: 0.75, blue: 1)
+        case .pull: Color(red: 1, green: 0.55, blue: 0.15)
+        case .extraLife: Color(red: 1, green: 0.27, blue: 0.42)
+        }
+    }
+}
+
 /// Spins over the four powers, slower and slower, and stops on the one won.
 private struct AbilityRoulette: View {
     let won: Ability
@@ -178,7 +279,7 @@ private struct AbilityRoulette: View {
 
     var body: some View {
         VStack(spacing: 22) {
-            Text(isDone ? "+1 \(won.title)" : "Roulette des pouvoirs")
+            Text(isDone ? "+1 \(won.title)" : "Roulette !")
                 .font(.title.weight(.heavy))
                 .fontDesign(.rounded)
                 .foregroundStyle(.white)
@@ -193,13 +294,6 @@ private struct AbilityRoulette: View {
                         .animation(.spring(duration: 0.18), value: highlighted)
                         .animation(.spring(duration: 0.5, bounce: 0.5), value: isDone)
                 }
-            }
-            if isDone {
-                Text(won.summary)
-                    .font(.subheadline)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.white.opacity(0.85))
-                    .transition(.opacity)
             }
         }
         .animation(.spring(duration: 0.4), value: isDone)

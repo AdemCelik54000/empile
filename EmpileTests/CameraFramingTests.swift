@@ -13,6 +13,19 @@ struct CameraFramingTests {
         (worldY - shot.centerY) / shot.scale + viewport.size.height / 2
     }
 
+    @Test func overviewZoomsOutPastTheLimitToShowTheWholeTower() {
+        let shot = framing.overview(towerTop: 5000, platformTop: 0, viewport: viewport)
+        #expect(shot.scale > 1.6)
+        #expect(abs(screenY(of: 0, in: shot) - (34 + 150)) < 0.001)
+        #expect(screenY(of: 5000, in: shot) <= 874 - 62)
+        #expect(screenY(of: 5000, in: shot) > 874 / 2)
+    }
+
+    @Test func overviewOfAShortTowerDoesNotZoomIn() {
+        let shot = framing.overview(towerTop: 100, platformTop: 0, viewport: viewport)
+        #expect(shot.scale == 1)
+    }
+
     @Test func shortTowerKeepsFullSizeWithPlatformNearTheBottom() {
         let shot = framing.shot(towerTop: 100, platformTop: 0, viewport: viewport)
         #expect(shot.scale == 1)

@@ -129,6 +129,9 @@ enum Tuning {
         static let maxZoomOut: CGFloat = 1
         /// How quickly the camera catches up. Lower = softer.
         static let sharpness: Double = 4
+        /// The slow pull back over the whole tower at the end of a game, and the pause before it starts.
+        static let overviewSharpness: Double = 1.4
+        static let overviewDelay: TimeInterval = 0.8
         /// Finger at the very edge of the screen for a moment: the camera peeks to that side.
         /// Distance from the screen side that counts as the edge, and how long the finger must stay.
         static let edgeWidth: CGFloat = 18
@@ -372,7 +375,7 @@ enum Tuning {
         static let ropeMinWidth: CGFloat = 1.5
         static let ropeThinningLength: CGFloat = 70
         /// How long the power's icon takes the stage when it is used, before it acts.
-        static let activationDuration: TimeInterval = 0.75
+        static let activationDuration: TimeInterval = 1.0
         /// How long the changed piece stays on display after a shape or material change.
         static let changeDisplayDuration: TimeInterval = 0.6
         /// The roulette: how many full turns before it slows down, and the delay between two steps,
@@ -409,6 +412,51 @@ enum Tuning {
         static let shardLifetime: CGFloat = 0.9
         static let shardSize: CGFloat = 8
         static let shardSpin: CGFloat = 9
+    }
+
+    enum Freeze {
+        /// How opaque the ice over a frozen piece ends up (its crystals and top shine come on top).
+        static let frostOpacity: CGFloat = 1
+        /// How long the ice takes to cover a piece.
+        static let frostDuration: TimeInterval = 0.35
+        /// The white flash as a piece turns to ice.
+        static let flashOpacity: CGFloat = 0.9
+        /// How much a piece pops as it freezes.
+        static let pop: CGFloat = -0.12
+        /// The freeze climbs the tower: delay per point of height, and the longest wait.
+        static let wavePerPoint: TimeInterval = 0.0012
+        static let maxWaveDelay: TimeInterval = 0.6
+        /// The blue flash over the whole screen.
+        static let screenFlashOpacity: CGFloat = 0.55
+        static let screenFlashDuration: TimeInterval = 0.7
+        /// Frost creeping in from the edges of the screen: how fast it comes, how long it stays, how slowly it
+        /// melts away, and how many crystals grow from the border.
+        static let frameFadeIn: TimeInterval = 0.18
+        static let frameHold: TimeInterval = 2.4
+        static let frameFadeOut: TimeInterval = 0.8
+        static let frameCrystals = 70
+        /// Snow falling over the whole screen while the frost is there.
+        static let snowBirthRate: CGFloat = 70
+        static let snowSpeed: ClosedRange<CGFloat> = 90...220
+        static let snowSize: CGFloat = 16
+        /// The crystal pattern drawn over frozen pieces: size of one tile (points).
+        static let patternSize: CGFloat = 96
+        /// Snowflakes thrown out by each frozen piece.
+        static let flakesPerPiece = 10
+        static let flakeLifetime: CGFloat = 1.1
+        static let flakeSpeed: ClosedRange<CGFloat> = 40...180
+        /// Ice settling on the top of the structure: thickness of the layer and how far it runs down the sides,
+        /// as shares of a square.
+        static let capThickness: CGFloat = 0.2
+        static let sideDrip: ClosedRange<CGFloat> = 0.35...0.85
+        /// Small icicles hanging under the layer: how many per square face at most, and how long.
+        static let icicles = 2
+        static let icicleLength: ClosedRange<CGFloat> = 0.12...0.32
+        static let capFadeIn: TimeInterval = 0.45
+        /// A ring of frost spreads from the top of the tower.
+        static let ringDuration: TimeInterval = 0.6
+        static let ringScale: CGFloat = 9
+        static let shake: CGFloat = 0.5
     }
 
     enum Tension {

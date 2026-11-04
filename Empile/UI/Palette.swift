@@ -36,6 +36,8 @@ enum Palette {
     )
     static let gold = UIColor(light: UIColor(hex: 0xE3B23C), dark: UIColor(hex: 0xEDC25A))
     /// Glass shards, more opaque than the block so they read as sparkles.
+    /// Frost over the pieces caught by the freeze power, and the snow it throws.
+    static let ice = UIColor(light: UIColor(hex: 0x8FE3FF), dark: UIColor(hex: 0x7FD8FF))
     static let shard = UIColor(light: UIColor(hex: 0xBFE6F3), dark: UIColor(hex: 0xA6DCEE))
     /// Floating points: dark over the light sky, light over the night sky.
     static let scoreText = UIColor.label

@@ -24,6 +24,8 @@ final class TextureFactory {
     private var previewCache: [PreviewKey: UIImage] = [:]
     private var traits = UITraitCollection(userInterfaceStyle: .light)
     private var displayScale: CGFloat = 1
+    private var frostFrameCache: (size: CGSize, image: UIImage)?
+    private var frostPatternTexture: SKTexture?
 
     /// Size of a block sprite: its footprint plus room for the shadow.
     static func spriteSize(for shape: BlockShape) -> CGSize {
@@ -35,6 +37,7 @@ final class TextureFactory {
         traits = UITraitCollection(userInterfaceStyle: style)
         self.displayScale = displayScale
         blockCache.removeAll()
+        frostFrameCache = nil
     }
 
     func resolve(_ color: UIColor) -> UIColor {
@@ -90,6 +93,127 @@ final class TextureFactory {
             path.fill()
         }
         return SKTexture(image: image)
+    }
+
+    /// A six-armed snowflake with little branches, tinted by the emitter.
+    func snowflake(size: CGFloat) -> SKTexture {
+        let image = renderer(size: CGSize(width: size, height: size)).image { context in
+            let cg = context.cgContext
+            let center = size / 2
+            let arm = size * 0.46
+            cg.translateBy(x: center, y: center)
+            cg.setStrokeColor(UIColor.white.cgColor)
+            cg.setLineCap(.round)
+            cg.setLineWidth(max(1, size * 0.09))
+            for index in 0..<6 {
+                cg.saveGState()
+                cg.rotate(by: CGFloat(index) * .pi / 3)
+                cg.move(to: .zero)
+                cg.addLine(to: CGPoint(x: 0, y: -arm))
+                for (along, length) in [(0.45, 0.22), (0.72, 0.16)] {
+                    let base = CGPoint(x: 0, y: -arm * along)
+                    cg.move(to: base)
+                    cg.addLine(to: CGPoint(x: -arm * length, y: base.y - arm * length))
+                    cg.move(to: base)
+                    cg.addLine(to: CGPoint(x: arm * length, y: base.y - arm * length))
+                }
+                cg.strokePath()
+                cg.restoreGState()
+            }
+        }
+        return SKTexture(image: image)
+    }
+
+    /// Frost creeping in from the edges of the screen: clear in the middle, white and crystalline at the borders.
+    func frostFrame(size: CGSize) -> UIImage {
+        if let cached = frostFrameCache, cached.size == size { return cached.image }
+        let ice = resolve(Palette.ice)
+        let image = renderer(size: size, scale: min(displayScale, 2)).image { context in
+            let cg = context.cgContext
+            let colors = [ice.withAlphaComponent(0), ice.withAlphaComponent(0.2), UIColor.white.withAlphaComponent(0.6)]
+            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                         colors: colors.map(\.cgColor) as CFArray, locations: [0.62, 0.86, 1]) {
+                cg.saveGState()
+                cg.translateBy(x: size.width / 2, y: size.height / 2)
+                cg.scaleBy(x: size.width / 2, y: size.height / 2)
+                cg.drawRadialGradient(gradient, startCenter: .zero, startRadius: 0, endCenter: .zero, endRadius: 1,
+                                      options: .drawsAfterEndLocation)
+                cg.restoreGState()
+            }
+            var generator = SeededGenerator(seed: 7)
+            cg.setLineCap(.round)
+            let perimeter = 2 * (size.width + size.height)
+            for index in 0..<Tuning.Freeze.frameCrystals {
+                // A point on the border, then a branch growing inwards.
+                let along = (CGFloat(index) + .random(in: 0..<1, using: &generator)) / CGFloat(Tuning.Freeze.frameCrystals)
+                    * perimeter
+                let (start, inward) = Self.borderPoint(along, in: size)
+                let angle = inward + .random(in: -0.6...0.6, using: &generator)
+                let length = CGFloat.random(in: 30...120, using: &generator)
+                cg.setStrokeColor(UIColor.white.withAlphaComponent(.random(in: 0.5...0.95, using: &generator)).cgColor)
+                Self.drawCrystal(in: cg, from: start, angle: angle, length: length,
+                                 width: .random(in: 1.2...2.6, using: &generator), depth: 2, generator: &generator)
+            }
+        }
+        frostFrameCache = (size, image)
+        return image
+    }
+
+    /// Frost crystals for the ice over frozen pieces: white branches on transparent, repeated over the piece.
+    func frostPattern() -> SKTexture {
+        if let frostPatternTexture { return frostPatternTexture }
+        let side = Tuning.Freeze.patternSize
+        let image = renderer(size: CGSize(width: side, height: side), scale: 2).image { context in
+            let cg = context.cgContext
+            var generator = SeededGenerator(seed: 11)
+            cg.setLineCap(.round)
+            for _ in 0..<9 {
+                let start = CGPoint(x: .random(in: 0...side, using: &generator), y: .random(in: 0...side, using: &generator))
+                cg.setStrokeColor(UIColor.white.withAlphaComponent(.random(in: 0.55...1, using: &generator)).cgColor)
+                Self.drawCrystal(in: cg, from: start, angle: .random(in: 0..<(2 * .pi), using: &generator),
+                                 length: .random(in: 14...34, using: &generator),
+                                 width: .random(in: 0.8...1.6, using: &generator), depth: 2, generator: &generator)
+            }
+            UIColor.white.withAlphaComponent(0.8).setFill()
+            for _ in 0..<24 {
+                let dot = CGFloat.random(in: 0.8...2, using: &generator)
+                cg.fillEllipse(in: CGRect(x: .random(in: 0...side, using: &generator),
+                                          y: .random(in: 0...side, using: &generator), width: dot, height: dot))
+            }
+        }
+        let texture = SKTexture(image: image)
+        frostPatternTexture = texture
+        return texture
+    }
+
+    /// A point `along` the border of `size`, going round clockwise from the top left, and the angle pointing
+    /// into the screen from there.
+    private static func borderPoint(_ along: CGFloat, in size: CGSize) -> (CGPoint, CGFloat) {
+        let distance = along.truncatingRemainder(dividingBy: 2 * (size.width + size.height))
+        if distance < size.width { return (CGPoint(x: distance, y: 0), .pi / 2) }
+        if distance < size.width + size.height { return (CGPoint(x: size.width, y: distance - size.width), .pi) }
+        if distance < 2 * size.width + size.height {
+            return (CGPoint(x: 2 * size.width + size.height - distance, y: size.height), -.pi / 2)
+        }
+        return (CGPoint(x: 0, y: 2 * (size.width + size.height) - distance), 0)
+    }
+
+    /// One frost crystal: a straight branch with smaller branches growing off it on both sides.
+    private static func drawCrystal(in cg: CGContext, from start: CGPoint, angle: CGFloat, length: CGFloat,
+                                    width: CGFloat, depth: Int, generator: inout SeededGenerator) {
+        let end = CGPoint(x: start.x + cos(angle) * length, y: start.y + sin(angle) * length)
+        cg.setLineWidth(width)
+        cg.move(to: start)
+        cg.addLine(to: end)
+        cg.strokePath()
+        guard depth > 0 else { return }
+        for along in stride(from: 0.3, to: 0.95, by: 0.3) {
+            let base = CGPoint(x: start.x + (end.x - start.x) * along, y: start.y + (end.y - start.y) * along)
+            for side in [-1.0, 1.0] {
+                drawCrystal(in: cg, from: base, angle: angle + side * .pi / 3, length: length * (0.45 - along * 0.2),
+                            width: width * 0.7, depth: depth - 1, generator: &generator)
+            }
+        }
     }
 
     enum BirdPose: CaseIterable {

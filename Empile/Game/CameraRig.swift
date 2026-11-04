@@ -21,6 +21,9 @@ final class CameraRig {
     private var trauma: CGFloat = 0
     private var shakeClock: TimeInterval = 0
 
+    /// The end of a game: the camera slowly pulls back until the whole tower is in view.
+    var showsWholeTower = false
+
     var scale: CGFloat { node.xScale }
 
     /// World rectangle currently on screen.
@@ -54,8 +57,11 @@ final class CameraRig {
     /// Eases toward the right framing. Position and zoom share one blend,
     /// so the platform stays pinned on screen while the camera zooms out.
     func follow(towerTop: CGFloat, deltaTime: TimeInterval) {
-        let shot = framing.shot(towerTop: towerTop, platformTop: Platform.surfaceY, viewport: viewport)
-        let blend = Smoothing.blend(sharpness: Tuning.Camera.sharpness, deltaTime: deltaTime)
+        let shot = showsWholeTower
+            ? framing.overview(towerTop: towerTop, platformTop: Platform.surfaceY, viewport: viewport)
+            : framing.shot(towerTop: towerTop, platformTop: Platform.surfaceY, viewport: viewport)
+        let sharpness = showsWholeTower ? Tuning.Camera.overviewSharpness : Tuning.Camera.sharpness
+        let blend = Smoothing.blend(sharpness: sharpness, deltaTime: deltaTime)
         focusY += (shot.centerY - focusY) * blend
         baseScale += (shot.scale - baseScale) * blend
         node.setScale(baseScale * (1 + Tuning.Camera.edgeZoomOut * abs(sidePush)))

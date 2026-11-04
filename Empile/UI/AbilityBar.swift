@@ -59,7 +59,7 @@ private struct AbilityButton: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .foregroundStyle(isEnabled ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+            .foregroundStyle(isEnabled ? AnyShapeStyle(ability.color) : AnyShapeStyle(.tertiary))
             .frame(maxWidth: .infinity, minHeight: 60)
             .background(.fill.quaternary, in: .rect(cornerRadius: 16))
             .overlay(alignment: .topTrailing) {
@@ -163,7 +163,7 @@ struct PullTimer: View {
                     .animation(.linear(duration: 0.1), value: timeLeft)
             }
             .frame(width: 26, height: 26)
-            Text("Touchez une pièce et tirez")
+            Text("Tirez !")
                 .font(.subheadline.weight(.semibold))
             Text("\(Int(timeLeft.rounded(.up))) s")
                 .font(.headline)

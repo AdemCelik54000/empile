@@ -57,13 +57,6 @@ struct PieceSupply: Sendable {
         return reshaped
     }
 
-    /// The same piece in another material, picked at random, never the one it had.
-    func rematerialized(_ card: Card, using generator: inout some RandomNumberGenerator) -> Card {
-        var changed = card
-        changed.kind = BlockKind.inPlay.filter { $0 != card.kind }.randomElement(using: &generator) ?? card.kind
-        return changed
-    }
-
     private func pickKind(level: Int, using generator: inout some RandomNumberGenerator) -> BlockKind {
         let roll = Double.random(in: 0..<1, using: &generator)
         if roll < odds.gold {

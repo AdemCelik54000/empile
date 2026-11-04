@@ -100,6 +100,31 @@ final class Tower {
         return result
     }
 
+    /// Some piece can still move: the freeze power has something to freeze.
+    var hasLooseBlocks: Bool {
+        blocks.contains { !$0.isFrozen && !$0.hasFallenOff && $0.physicsBody != nil }
+    }
+
+    /// The freeze power: every piece still in play stops dead where it is, even in mid-air, and stays there
+    /// for good. Pieces falling off the platform are already lost and fall on.
+    /// - Returns: The pieces just frozen.
+    func freezeLooseBlocks(using textures: TextureFactory) -> [BlockNode] {
+        let loose = blocks.filter { !$0.isFrozen && !$0.hasFallenOff && $0.physicsBody != nil }
+        let base = loose.map(\.position.y).min() ?? 0
+        for block in loose {
+            let delay = min(Double(block.position.y - base) * Tuning.Freeze.wavePerPoint, Tuning.Freeze.maxWaveDelay)
+            // Ice settles only where nothing rests: on the top of the structure, never between two pieces.
+            let open = block.upwardFaces.filter { face in
+                guard let parent = block.parent else { return false }
+                let past = block.convert(block.pointPast(face), to: parent)
+                return !blocks.contains { $0 !== block && !$0.hasFallenOff && $0.covers(past) }
+            }
+            block.iceOver(after: delay, cappedFaces: open, using: textures)
+        }
+        isStable = false
+        return loose
+    }
+
     var frozenCardIDs: Set<Card.ID> {
         Set(blocks.filter(\.isFrozen).map(\.cardID))
     }

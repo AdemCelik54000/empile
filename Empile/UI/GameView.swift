@@ -33,6 +33,8 @@ struct GameView: View {
     @State private var tutorialPlacements = 0
     /// This game has already celebrated beating the record.
     @State private var hasCelebratedRecord = false
+    /// The freeze power just went off: frost covers the edges of the screen for a few seconds.
+    @State private var showsFrost = false
     /// An ad is on screen, or about to be: the buttons of the game over panel wait.
     @State private var isLeavingGameOver = false
     @Environment(\.colorScheme) private var colorScheme
@@ -59,6 +61,8 @@ struct GameView: View {
             }
 
             playingOverlay
+
+            FrostFrame(scene: scene, isShown: showsFrost)
 
             if let abilityStage {
                 AbilityStageView(
@@ -229,8 +233,8 @@ struct GameView: View {
         }
     }
 
-    /// Every power takes the stage the same way, then acts: a shape or material change asks for the piece,
-    /// the others act at once.
+    /// Every power takes the stage the same way, then acts: a shape change asks for the piece, the others act
+    /// at once.
     private func use(_ ability: Ability) {
         guard abilityStage == nil, session.canUse(ability) else { return }
         scene.prepareForPause()
@@ -240,8 +244,14 @@ struct GameView: View {
             try? await Task.sleep(for: .seconds(Tuning.Abilities.activationDuration))
             guard stageID == id, abilityStage == .activating(ability) else { return }
             switch ability {
-            case .reshape, .rematerial:
+            case .reshape:
                 showStage(.picking(ability))
+            case .freeze:
+                if session.useFreeze() {
+                    scene.freezeTower()
+                    showFrost()
+                }
+                abilityStage = nil
             case .extraLife:
                 if session.useExtraLife() {
                     scene.celebrateAbility()
@@ -253,6 +263,15 @@ struct GameView: View {
                 }
                 abilityStage = nil
             }
+        }
+    }
+
+    /// Frost creeps in fast from the edges of the screen, stays a moment, then melts away.
+    private func showFrost() {
+        withAnimation(.easeOut(duration: Tuning.Freeze.frameFadeIn)) { showsFrost = true }
+        Task {
+            try? await Task.sleep(for: .seconds(Tuning.Freeze.frameFadeIn + Tuning.Freeze.frameHold))
+            withAnimation(.easeIn(duration: Tuning.Freeze.frameFadeOut)) { showsFrost = false }
         }
     }
 
@@ -303,5 +322,24 @@ struct GameView: View {
             options.insert(.showsPhysics)
         }
         return options
+    }
+}
+
+/// Frost on the edges of the whole screen, interface included, while the freeze power goes off. Nothing to touch.
+private struct FrostFrame: View {
+    let scene: TowerScene
+    let isShown: Bool
+
+    var body: some View {
+        GeometryReader { proxy in
+            if isShown {
+                Image(uiImage: scene.frostFrame(size: proxy.size))
+                    .resizable()
+                    .transition(.scale(scale: 1.08).combined(with: .opacity))
+            }
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
 }

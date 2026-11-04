@@ -8,11 +8,6 @@
 	<string>ca-app-pub-8817900109973306~3491063497</string>
 	<key>NSLocalizedDescription</key>
 	<string>Stack blocks higher and higher in this addictive puzzle game.</string>
-	<key>UIApplicationSceneManifest</key>
-	<dict>
-		<key>UIApplicationSupportsMultipleScenes</key>
-		<false/>
-	</dict>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>
@@ -216,5 +211,10 @@
 			<string>3qcr597p9d.skadnetwork</string>
 		</dict>
 	</array>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
 </dict>
 </plist>

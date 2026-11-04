@@ -2,8 +2,8 @@
 enum Ability: CaseIterable, Identifiable, Hashable, Sendable {
     /// The chosen piece takes another shape.
     case reshape
-    /// The chosen piece takes another material, picked at random.
-    case rematerial
+    /// Everything in the tower stops dead and stays put for good, as solid as the platform.
+    case freeze
     /// For a few seconds, a rope pulls any piece of the tower towards the finger.
     case pull
     /// One more life.
@@ -14,7 +14,7 @@ enum Ability: CaseIterable, Identifiable, Hashable, Sendable {
     var title: String {
         switch self {
         case .reshape: "Forme"
-        case .rematerial: "Matière"
+        case .freeze: "Gel"
         case .pull: "Grappin"
         case .extraLife: "Vie"
         }
@@ -22,24 +22,24 @@ enum Ability: CaseIterable, Identifiable, Hashable, Sendable {
 
     var summary: String {
         switch self {
-        case .reshape: "Change la forme d'une pièce"
-        case .rematerial: "Donne une matière au hasard à une pièce"
-        case .pull: "Tirez les pièces de la tour pendant \(Int(Tuning.Abilities.pullDuration)) secondes"
-        case .extraLife: "Une vie de plus"
+        case .reshape: "Nouvelle forme"
+        case .freeze: "Fige toute la tour"
+        case .pull: "Tirez les pièces"
+        case .extraLife: "+1 vie"
         }
     }
 
     var symbol: String {
         switch self {
         case .reshape: "arrow.triangle.2.circlepath"
-        case .rematerial: "dice.fill"
+        case .freeze: "snowflake"
         case .pull: "hand.draw.fill"
         case .extraLife: "heart.fill"
         }
     }
 
     /// The player picks a piece to change before it takes effect.
-    var needsPiece: Bool { self == .reshape || self == .rematerial }
+    var needsPiece: Bool { self == .reshape }
 }
 
 /// How many of each power the player holds.

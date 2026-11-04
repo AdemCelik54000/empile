@@ -204,6 +204,30 @@ final class TowerScene: SKScene {
         haptics.play(Tuning.Haptics.purchase)
     }
 
+    /// The freeze power: every piece still in play turns to ice where it stands, a wave climbing the tower, and
+    /// stays there for good. Pieces that had not been judged yet earn their points now.
+    func freezeTower() {
+        let frozen = tower.freezeLooseBlocks(using: textures)
+        guard !frozen.isEmpty else { return }
+        let top = frozen.max { $0.topY < $1.topY }.map { CGPoint(x: $0.position.x, y: $0.topY) }
+            ?? CGPoint(x: Platform.frame.midX, y: tower.stableTop)
+        powers.freeze(frozen, top: top, camera: cameraRig.node, screenSize: size, cameraScale: cameraRig.scale)
+        cameraRig.shake(strength: Tuning.Freeze.shake)
+        let unjudged = frozen.filter { !$0.isScored && session.isPlaying }
+        for block in unjudged {
+            block.markScored()
+        }
+        if !unjudged.isEmpty {
+            score(unjudged)
+        }
+        session.reportLooseBlocks(false)
+    }
+
+    /// Frost on the edges of a screen this size, for the interface to lay over the game while the freeze goes off.
+    func frostFrame(size: CGSize) -> UIImage {
+        textures.frostFrame(size: size)
+    }
+
     /// A short click, for each step of the roulette.
     func playTick() {
         audio.play(.turn, volume: Tuning.Sound.turnVolume)
@@ -285,6 +309,7 @@ final class TowerScene: SKScene {
     }
 
     func startNewGame() {
+        cameraRig.showsWholeTower = false
         clearWorld()
         session.startNewGame()
     }
@@ -369,7 +394,8 @@ final class TowerScene: SKScene {
         powers.firePendingSprings(using: textures)
         react(to: tower.update(deltaTime: deltaTime, viewBottom: cameraRig.visibleRect.minY))
         updateEdgeNudge()
-        cameraRig.follow(towerTop: tower.stableTop, deltaTime: deltaTime)
+        cameraRig.follow(towerTop: cameraRig.showsWholeTower ? max(tower.stableTop, tower.landedTop) : tower.stableTop,
+                         deltaTime: deltaTime)
         updateReadyBlock()
         updateHeldBlock()
         rope.draw(in: self, cameraScale: cameraRig.scale)
@@ -413,6 +439,7 @@ final class TowerScene: SKScene {
         if update.becameStable && isPlaying {
             breakOverloadedGlass()
         }
+        session.reportLooseBlocks(tower.hasLooseBlocks)
         updateSkyStage()
         let floors = ClimbProgress.floors(height: tower.stableTop - Platform.surfaceY, unit: Tuning.World.unit)
         if floors != session.climb.floors, !session.reportHeight(floors).isEmpty {
@@ -482,6 +509,13 @@ final class TowerScene: SKScene {
                 cancelDrag()
             }
             tension.silence()
+            run(.sequence([
+                .wait(forDuration: Tuning.Camera.overviewDelay),
+                .run { [weak self] in
+                    guard let self, !self.session.isPlaying else { return }
+                    self.cameraRig.showsWholeTower = true
+                },
+            ]))
         }
     }
 

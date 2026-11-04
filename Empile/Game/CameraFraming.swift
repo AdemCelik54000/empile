@@ -36,4 +36,18 @@ struct CameraFraming: Sendable {
         let followingTop = towerTop + scale * (viewport.topInset + headroom) - halfHeight
         return Shot(centerY: max(pinnedToPlatform, followingTop), scale: scale)
     }
+
+    /// The whole climb at once, from the platform to the top, however far it has to zoom out: the view behind
+    /// the end of a game.
+    func overview(towerTop: CGFloat, platformTop: CGFloat, viewport: Viewport) -> Shot {
+        let usableHeight = viewport.size.height - viewport.topInset - viewport.bottomInset
+        let roomForTower = usableHeight - floorMargin - overviewHeadroom
+        let towerHeight = max(0, towerTop - platformTop)
+        let scale = roomForTower > 0 ? max(1, towerHeight / roomForTower) : 1
+        let halfHeight = viewport.size.height / 2 * scale
+        return Shot(centerY: platformTop - scale * (viewport.bottomInset + floorMargin) + halfHeight, scale: scale)
+    }
+
+    /// Screen space kept free above the tower top in the overview.
+    private var overviewHeadroom: CGFloat { headroom / 3 }
 }

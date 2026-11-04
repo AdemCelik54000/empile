@@ -132,17 +132,17 @@ struct GameSessionTests {
         #expect(session.hand.map(\.id) == [0, 1, 2])
     }
 
-    @Test func changingMaterialUsesThePowerAndChangesOnlyThatPiece() {
-        let session = makeSession(supply: barsOnly)
-        let before = session.hand
-        #expect(session.change(before[2].id, with: .rematerial))
-        #expect(session.hand[0] == before[0])
-        #expect(session.hand[1] == before[1])
-        #expect(session.hand[2].id == before[2].id)
-        #expect(session.hand[2].shape == before[2].shape)
-        #expect(session.hand[2].kind != before[2].kind)
-        #expect(session.abilities.count(of: .rematerial) == 0)
-        #expect(!session.change(before[0].id, with: .rematerial))
+    @Test func theFreezePowerNeedsALoosePieceAndIsUsedOnce() {
+        let session = makeSession()
+        #expect(!session.canUse(.freeze))
+        #expect(!session.useFreeze())
+        session.reportLooseBlocks(true)
+        #expect(session.canUse(.freeze))
+        #expect(session.useFreeze())
+        #expect(session.abilities.count(of: .freeze) == 0)
+        #expect(!session.hasLooseBlocks)
+        session.reportLooseBlocks(true)
+        #expect(!session.useFreeze())
     }
 
     @Test func reshapingGivesAnotherShapeAndKeepsTheMaterial() {
@@ -155,9 +155,10 @@ struct GameSessionTests {
         #expect(session.abilities.count(of: .reshape) == 0)
     }
 
-    @Test func onlyShapeAndMaterialPowersChangeAPiece() {
+    @Test func onlyTheShapePowerChangesAPiece() {
         let session = makeSession()
         #expect(!session.change(session.hand[0].id, with: .pull))
+        #expect(!session.change(session.hand[0].id, with: .freeze))
         #expect(session.abilities.count(of: .pull) == 1)
     }
 
@@ -205,14 +206,12 @@ struct GameSessionTests {
 
 @Suite("Piece supply")
 struct PieceSupplyTests {
-    @Test func glassIsNeverDealtNorRolled() {
+    @Test func glassIsNeverDealt() {
         var supply = PieceSupply()
         var generator = SeededGenerator(seed: 5)
         for _ in 0..<3000 {
             let card = supply.next(level: 20, using: &generator)
             #expect(card.kind != .glass)
-            #expect(supply.rematerialized(card, using: &generator).kind != .glass)
-            #expect(supply.rematerialized(card, using: &generator).kind != card.kind)
         }
     }
 

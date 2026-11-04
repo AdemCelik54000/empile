@@ -19,6 +19,8 @@ final class PowerEffects {
     private var pendingLaunches: [Launch] = []
     private var shardTexture: SKTexture?
     private var shardColor = UIColor.white
+    private var flakeTexture: SKTexture?
+    private var iceColor = UIColor.cyan
 
     init(haptics: HapticsManager, audio: AudioManager) {
         self.haptics = haptics
@@ -29,6 +31,8 @@ final class PowerEffects {
     func refresh(using textures: TextureFactory) {
         shardTexture = textures.shard(size: Tuning.Powers.shardSize)
         shardColor = textures.resolve(Palette.shard)
+        flakeTexture = textures.snowflake(size: Tuning.Freeze.snowSize)
+        iceColor = textures.resolve(Palette.ice)
     }
 
     /// Call from the physics contact delegate: arms a launch when a piece comes down on an unfired spring.
@@ -96,6 +100,88 @@ final class PowerEffects {
         let lifetime = TimeInterval(Tuning.Powers.shardLifetime * 1.5)
         burst.run(.sequence([.wait(forDuration: lifetime), .removeFromParent()]))
         audio.play(.glassShatter, volume: Tuning.Sound.shatterVolume)
+        haptics.play(Tuning.Haptics.shatter, spacing: Tuning.Haptics.patternSpacing / 2)
+    }
+
+    /// The freeze power going off: the screen flashes ice blue, snow falls for a few seconds (while the interface
+    /// shows frost on the edges of the screen), a ring of frost spreads from the top of the tower, and every frozen
+    /// piece throws out snowflakes.
+    /// - Parameter camera: The flash and the snow cover the screen, so they hang from the camera.
+    func freeze(_ blocks: [BlockNode], top: CGPoint, camera: SKCameraNode, screenSize: CGSize, cameraScale: CGFloat) {
+        let tuning = Tuning.Freeze.self
+        let flash = SKSpriteNode(color: iceColor, size: screenSize)
+        flash.blendMode = .add
+        flash.alpha = tuning.screenFlashOpacity
+        flash.zPosition = Layer.screenFlash
+        camera.addChild(flash)
+        flash.run(.sequence([.fadeOut(withDuration: tuning.screenFlashDuration), .removeFromParent()]))
+
+        let snow = SKEmitterNode()
+        snow.particleTexture = flakeTexture
+        snow.particleColor = .white
+        snow.particleColorBlendFactor = 1
+        snow.position = CGPoint(x: 0, y: screenSize.height / 2 + tuning.snowSize)
+        snow.particlePositionRange = CGVector(dx: screenSize.width * 1.1, dy: 0)
+        snow.particleBirthRate = tuning.snowBirthRate
+        let fall = tuning.snowSpeed
+        snow.particleSpeed = (fall.lowerBound + fall.upperBound) / 2
+        snow.particleSpeedRange = fall.upperBound - fall.lowerBound
+        snow.emissionAngle = -.pi / 2
+        snow.emissionAngleRange = 0.35
+        snow.particleLifetime = screenSize.height / fall.lowerBound
+        snow.particleScale = 0.6
+        snow.particleScaleRange = 0.6
+        snow.particleRotationRange = 2 * .pi
+        snow.particleRotationSpeed = 1.2
+        snow.particleAlpha = 0.95
+        snow.particleAlphaRange = 0.3
+        snow.zPosition = Layer.screenFlash - 0.5
+        snow.advanceSimulationTime(0.4)
+        camera.addChild(snow)
+        snow.run(.sequence([
+            .wait(forDuration: tuning.frameFadeIn + tuning.frameHold),
+            .run { [weak snow] in snow?.particleBirthRate = 0 },
+            .wait(forDuration: TimeInterval(snow.particleLifetime)),
+            .removeFromParent(),
+        ]))
+
+        let ring = SKShapeNode(circleOfRadius: Tuning.World.unit * cameraScale)
+        ring.strokeColor = iceColor
+        ring.lineWidth = 6 * cameraScale
+        ring.glowWidth = 4 * cameraScale
+        ring.fillColor = .clear
+        ring.position = top
+        node.addChild(ring)
+        let grow = SKAction.scale(to: tuning.ringScale, duration: tuning.ringDuration)
+        grow.timingMode = .easeOut
+        ring.run(.sequence([.group([grow, .fadeOut(withDuration: tuning.ringDuration)]), .removeFromParent()]))
+
+        for block in blocks {
+            let flakes = SKEmitterNode()
+            flakes.particleTexture = flakeTexture
+            flakes.particleColor = iceColor
+            flakes.particleColorBlendFactor = 1
+            flakes.particleColorRedRange = 0.4
+            flakes.position = block.position
+            flakes.particlePositionRange = CGVector(dx: block.footprint.width, dy: block.footprint.height)
+            flakes.numParticlesToEmit = tuning.flakesPerPiece
+            flakes.particleBirthRate = Tuning.Juice.dustBirthRate
+            flakes.particleLifetime = tuning.flakeLifetime
+            flakes.particleLifetimeRange = tuning.flakeLifetime / 2
+            flakes.emissionAngleRange = 2 * .pi
+            let speed = tuning.flakeSpeed
+            flakes.particleSpeed = (speed.lowerBound + speed.upperBound) / 2
+            flakes.particleSpeedRange = speed.upperBound - speed.lowerBound
+            flakes.yAcceleration = -80
+            flakes.particleRotationRange = 2 * .pi
+            flakes.particleRotationSpeed = 3
+            flakes.particleScale = 0.6
+            flakes.particleScaleRange = 0.5
+            flakes.particleAlphaSpeed = -1 / tuning.flakeLifetime
+            node.addChild(flakes)
+            flakes.run(.sequence([.wait(forDuration: TimeInterval(tuning.flakeLifetime * 1.6)), .removeFromParent()]))
+        }
+        audio.play(.glassShatter, volume: Tuning.Sound.shatterVolume, semitones: 7)
         haptics.play(Tuning.Haptics.shatter, spacing: Tuning.Haptics.patternSpacing / 2)
     }
 

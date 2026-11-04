@@ -3,6 +3,8 @@ import CoreGraphics
 /// Drawing order. The view ignores sibling order, so every node gets an explicit depth.
 enum Layer {
     static let background: CGFloat = -100
+    /// A flash over the whole screen, in front of the world.
+    static let screenFlash: CGFloat = 500
     static let pillar: CGFloat = -10
     static let platform: CGFloat = 0
     static let guide: CGFloat = 5
