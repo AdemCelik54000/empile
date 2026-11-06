@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		E1A000000000000000000052 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = E1A000000000000000000051 /* GoogleMobileAds */; };
+		E1A000000000000000000055 /* AppLovinAdapterTarget in Frameworks */ = {isa = PBXBuildFile; productRef = E1A000000000000000000054 /* AppLovinAdapterTarget */; };
+		E1A000000000000000000058 /* UnityAdapterTarget in Frameworks */ = {isa = PBXBuildFile; productRef = E1A000000000000000000057 /* UnityAdapterTarget */; };
+		E1A00000000000000000005B /* LiftoffMonetizeAdapterTarget in Frameworks */ = {isa = PBXBuildFile; productRef = E1A00000000000000000005A /* LiftoffMonetizeAdapterTarget */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +60,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				E1A000000000000000000052 /* GoogleMobileAds in Frameworks */,
+				E1A000000000000000000055 /* AppLovinAdapterTarget in Frameworks */,
+				E1A000000000000000000058 /* UnityAdapterTarget in Frameworks */,
+				E1A00000000000000000005B /* LiftoffMonetizeAdapterTarget in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -109,6 +115,9 @@
 			name = Empile;
 			packageProductDependencies = (
 				E1A000000000000000000051 /* GoogleMobileAds */,
+				E1A000000000000000000054 /* AppLovinAdapterTarget */,
+				E1A000000000000000000057 /* UnityAdapterTarget */,
+				E1A00000000000000000005A /* LiftoffMonetizeAdapterTarget */,
 			);
 			productName = Empile;
 			productReference = E1A000000000000000000004 /* Empile.app */;
@@ -167,6 +176,9 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				E1A000000000000000000050 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+				E1A000000000000000000053 /* XCRemoteSwiftPackageReference "googleads-mobile-ios-mediation-applovin" */,
+				E1A000000000000000000056 /* XCRemoteSwiftPackageReference "googleads-mobile-ios-mediation-unity" */,
+				E1A000000000000000000059 /* XCRemoteSwiftPackageReference "googleads-mobile-ios-mediation-liftoffmonetize" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E1A000000000000000000003 /* Products */;
@@ -370,6 +382,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.23;
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = app.empile.Empile;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -405,6 +418,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.23;
+				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = app.empile.Empile;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -494,6 +508,30 @@
 				minimumVersion = 13.0.0;
 			};
 		};
+		E1A000000000000000000053 /* XCRemoteSwiftPackageReference "googleads-mobile-ios-mediation-applovin" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/googleads-mobile-ios-mediation-applovin.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 13.6.400;
+			};
+		};
+		E1A000000000000000000056 /* XCRemoteSwiftPackageReference "googleads-mobile-ios-mediation-unity" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/googleads-mobile-ios-mediation-unity.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.21.000;
+			};
+		};
+		E1A000000000000000000059 /* XCRemoteSwiftPackageReference "googleads-mobile-ios-mediation-liftoffmonetize" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/googleads-mobile-ios-mediation-liftoffmonetize.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.7.800;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -501,6 +539,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E1A000000000000000000050 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
 			productName = GoogleMobileAds;
+		};
+		E1A000000000000000000054 /* AppLovinAdapterTarget */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E1A000000000000000000053 /* XCRemoteSwiftPackageReference "googleads-mobile-ios-mediation-applovin" */;
+			productName = AppLovinAdapterTarget;
+		};
+		E1A000000000000000000057 /* UnityAdapterTarget */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E1A000000000000000000056 /* XCRemoteSwiftPackageReference "googleads-mobile-ios-mediation-unity" */;
+			productName = UnityAdapterTarget;
+		};
+		E1A00000000000000000005A /* LiftoffMonetizeAdapterTarget */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E1A000000000000000000059 /* XCRemoteSwiftPackageReference "googleads-mobile-ios-mediation-liftoffmonetize" */;
+			productName = LiftoffMonetizeAdapterTarget;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -36,6 +36,13 @@ struct SettingsView: View {
                     }
                 }
 
+                #if DEBUG
+                // Jamais dans la version de l'App Store : sert à vérifier la médiation pendant le développement.
+                Section {
+                    Button("Inspecteur de pubs (debug)") { ads.presentAdInspector() }
+                }
+                #endif
+
                 Section {
                     LabeledContent("Version", value: Bundle.main.versionDescription)
                 }

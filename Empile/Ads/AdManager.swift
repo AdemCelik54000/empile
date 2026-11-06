@@ -73,9 +73,14 @@ final class AdManager: NSObject {
         }
         // Après le consentement UMP et avant la première requête, pour que celle-ci profite déjà de la réponse.
         await requestTrackingIfNeeded()
-        await MobileAds.shared.start()
+        let status = await MobileAds.shared.start()
         isStarted = true
         Self.log.info("Ad SDK started")
+        // Médiation : un adaptateur « not ready » ne participe pas aux enchères (compte, ID ou SDK manquant).
+        for (adapter, adapterStatus) in status.adapterStatusesByClassName.sorted(by: { $0.key < $1.key }) {
+            let state = adapterStatus.state == .ready ? "ready" : "NOT ready"
+            Self.log.info("Mediation adapter \(adapter, privacy: .public): \(state, privacy: .public) in \(adapterStatus.latency, format: .fixed(precision: 2), privacy: .public) s \(adapterStatus.description, privacy: .public)")
+        }
         await loadInterstitial()
         await loadRewarded()
     }
@@ -91,6 +96,19 @@ final class AdManager: NSObject {
         // Le joueur a pu accepter maintenant ce qu'il avait refusé : les pubs peuvent démarrer.
         await start()
     }
+
+    #if DEBUG
+    /// L'inspecteur de pubs de Google (versions de développement seulement) : état de chaque adaptateur de
+    /// médiation, et quel réseau a servi chaque pub, interstitielles comme récompensées.
+    func presentAdInspector() {
+        // La fin arrive hors du fil principal : journal local plutôt que celui de la classe.
+        MobileAds.shared.presentAdInspector(from: topViewController) { error in
+            guard let error = error as NSError? else { return }
+            Logger(subsystem: "app.empile.Empile", category: "ads")
+                .error("Ad inspector error: \(error.domain, privacy: .public) \(error.code, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        }
+    }
+    #endif
 
     /// Shows an ad if the player has finished enough games since the last one, and records it.
     /// Jamais juste après une pub récompensée : le joueur vient d'en regarder une, l'interstitielle attend la
