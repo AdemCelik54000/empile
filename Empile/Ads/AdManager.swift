@@ -1,3 +1,4 @@
+import AppTrackingTransparency
 import GoogleMobileAds
 import Observation
 import OSLog
@@ -40,7 +41,12 @@ final class AdManager: NSObject {
     /// avant d'avoir le statut de consentement. Si le consentement n'a pas pu être obtenu (pas de réseau au
     /// lancement, par exemple), un appel suivant réessaie au lieu de laisser la session sans pub.
     func start() async {
-        guard Tuning.Ads.isEnabled, !isStarted, !isStarting else { return }
+        guard Tuning.Ads.isEnabled, !isStarting else { return }
+        guard !isStarted else {
+            // La demande de suivi a pu être repoussée (le joueur avait quitté l'accueil) : c'est le moment.
+            await requestTrackingIfNeeded()
+            return
+        }
         isStarting = true
         defer { isStarting = false }
         await askForConsent()
@@ -50,6 +56,8 @@ final class AdManager: NSObject {
             Self.log.notice("No ad will load for now: consent does not allow requesting ads (tried again when the connection returns)")
             return
         }
+        // Après le consentement UMP et avant la première requête, pour que celle-ci profite déjà de la réponse.
+        await requestTrackingIfNeeded()
         await MobileAds.shared.start()
         isStarted = true
         Self.log.info("Ad SDK started")
@@ -180,6 +188,21 @@ final class AdManager: NSObject {
         updatePrivacyOptionsRequirement()
     }
 
+    /// Demande d'App Tracking Transparency : une seule fois dans la vie de l'app (iOS ne la montre plus ensuite),
+    /// toujours après le consentement UMP, jamais au lancement ni pendant une partie. Si le message de
+    /// consentement AdMob contient déjà l'explication IDFA, UMP a posé la question et rien ne se passe ici.
+    /// Un refus ne change rien au jeu : les pubs continuent, simplement moins ciblées.
+    private func requestTrackingIfNeeded() async {
+        guard ATTrackingManager.trackingAuthorizationStatus == .notDetermined else { return }
+        // Hors premier plan, iOS peut répondre « refusé » sans rien montrer : la seule question serait perdue.
+        guard canInterruptPlayer, UIApplication.shared.applicationState == .active else {
+            Self.log.notice("Tracking request postponed: the player is not on the home screen")
+            return
+        }
+        let status = await ATTrackingManager.requestTrackingAuthorization()
+        Self.log.info("Tracking authorization: \(Self.describe(status), privacy: .public)")
+    }
+
     private func updatePrivacyOptionsRequirement() {
         isPrivacyOptionsRequired = ConsentInformation.shared.privacyOptionsRequirementStatus == .required
     }
@@ -195,6 +218,16 @@ final class AdManager: NSObject {
         case .required: "required"
         case .notRequired: "not required"
         case .obtained: "obtained"
+        @unknown default: "other"
+        }
+    }
+
+    private static func describe(_ status: ATTrackingManager.AuthorizationStatus) -> String {
+        switch status {
+        case .notDetermined: "not determined"
+        case .restricted: "restricted"
+        case .denied: "denied"
+        case .authorized: "authorized"
         @unknown default: "other"
         }
     }

@@ -6,6 +6,8 @@
 	<true/>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-8817900109973306~3491063497</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>Votre identifiant publicitaire sert à afficher des publicités plus adaptées à vos goûts. Ce sont elles qui permettent à Empile de rester gratuit. Vous pourrez changer d'avis à tout moment dans les Réglages de l'iPhone.</string>
 	<key>NSLocalizedDescription</key>
 	<string>Stack blocks higher and higher in this addictive puzzle game.</string>
 	<key>SKAdNetworkItems</key>
