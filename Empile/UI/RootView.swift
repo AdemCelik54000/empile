@@ -74,7 +74,7 @@ struct RootView: View {
         .animation(.spring(duration: 0.35, bounce: 0.15), value: isPauseMenuShown)
         .tint(Color(uiColor: Palette.accent))
         .sheet(isPresented: $isSettingsShown) {
-            SettingsView(settings: settings)
+            SettingsView(settings: settings, ads: ads)
                 // Sheets do not inherit the tint of the screen that presents them.
                 .tint(Color(uiColor: Palette.accent))
         }
@@ -82,7 +82,13 @@ struct RootView: View {
             LeaderboardView(gameCenter: gameCenter)
                 .tint(Color(uiColor: Palette.accent))
         }
-        .task { await ads.start() }
+        // Consentement (et demande de suivi) seulement depuis l'accueil, quand rien ne bloque l'accès au jeu :
+        // jamais par-dessus une partie, ni par-dessus l'écran « pas de connexion » ou « mise à jour requise ».
+        // Revenir à l'accueil, ou retrouver la connexion, relance ce qui n'a pas pu se faire.
+        .task(id: mayShowAdPrompts) {
+            ads.canInterruptPlayer = mayShowAdPrompts
+            if mayShowAdPrompts { await ads.start() }
+        }
         .task {
             connectivity.start()
             await updates.check()
@@ -128,6 +134,11 @@ struct RootView: View {
             requiredUpdate: updates.requiredUpdate,
             isInGame: screen == .game
         )
+    }
+
+    /// Le joueur est sur l'accueil et peut jouer : un formulaire de consentement ou l'alerte de suivi ne coupe rien.
+    private var mayShowAdPrompts: Bool {
+        screen == .home && blocker == nil
     }
 
     private func play() {

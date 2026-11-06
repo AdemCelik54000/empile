@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Sound and vibration switches.
+/// Sound and vibration switches, and the privacy choices for ads when the law requires them.
 struct SettingsView: View {
     @Bindable var settings: GameSettings
+    let ads: AdManager
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -19,6 +20,20 @@ struct SettingsView: View {
                     Text("Retours")
                 } footer: {
                     Text("Les sons suivent aussi le mode silencieux de l'iPhone.")
+                }
+
+                // Exigé par le formulaire de consentement Google (Europe notamment) : le joueur doit pouvoir
+                // revenir sur ses choix à tout moment. Ailleurs, la ligne n'apparaît pas.
+                if ads.isPrivacyOptionsRequired {
+                    Section {
+                        Button {
+                            Task { await ads.presentPrivacyOptions() }
+                        } label: {
+                            Label("Gérer mes choix de confidentialité", systemImage: "hand.raised.fill")
+                        }
+                    } header: {
+                        Text("Publicités")
+                    }
                 }
 
                 Section {

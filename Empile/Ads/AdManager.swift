@@ -17,9 +17,18 @@ final class AdManager: NSObject {
 
     /// An ad to continue a game is loaded and ready.
     private(set) var isRewardedReady = false
+    /// Le formulaire de consentement exige un bouton « Gérer mes choix de confidentialité » (cas de l'Europe) :
+    /// les réglages l'affichent seulement quand c'est vrai.
+    private(set) var isPrivacyOptionsRequired = false
     @ObservationIgnored private var interstitial: InterstitialAd?
     @ObservationIgnored private var rewarded: RewardedAd?
     @ObservationIgnored private var isStarted = false
+    /// Un démarrage (consentement puis SDK) est en cours : un second appel ne le double pas.
+    @ObservationIgnored private var isStarting = false
+    /// Mis à jour par l'écran racine : vrai seulement sur l'accueil, quand rien ne bloque l'accès au jeu. Le
+    /// formulaire de consentement n'apparaît jamais sinon (le joueur a pu lancer une partie pendant que le
+    /// statut se chargeait) : il attend le prochain retour à l'accueil.
+    @ObservationIgnored var canInterruptPlayer = false
     @ObservationIgnored private var isLoadingInterstitial = false
     @ObservationIgnored private var isLoadingRewarded = false
     /// The player watched the rewarded ad long enough to earn the reward.
@@ -27,21 +36,37 @@ final class AdManager: NSObject {
     /// Waits for the player to close the ad being shown.
     @ObservationIgnored private var closing: CheckedContinuation<Bool, Never>?
 
-    /// Call once, when the app opens. Does nothing the second time.
+    /// À appeler à l'ouverture de l'app, puis chaque fois que la connexion revient. Aucune pub n'est chargée
+    /// avant d'avoir le statut de consentement. Si le consentement n'a pas pu être obtenu (pas de réseau au
+    /// lancement, par exemple), un appel suivant réessaie au lieu de laisser la session sans pub.
     func start() async {
-        guard Tuning.Ads.isEnabled, !isStarted else { return }
-        isStarted = true
+        guard Tuning.Ads.isEnabled, !isStarted, !isStarting else { return }
+        isStarting = true
+        defer { isStarting = false }
         await askForConsent()
         let canRequestAds = ConsentInformation.shared.canRequestAds
         Self.log.info("Consent: status \(Self.describe(ConsentInformation.shared.consentStatus), privacy: .public), canRequestAds \(canRequestAds, privacy: .public)")
         guard canRequestAds else {
-            Self.log.notice("No ad will load: consent does not allow requesting ads")
+            Self.log.notice("No ad will load for now: consent does not allow requesting ads (tried again when the connection returns)")
             return
         }
         await MobileAds.shared.start()
+        isStarted = true
         Self.log.info("Ad SDK started")
         await loadInterstitial()
         await loadRewarded()
+    }
+
+    /// Rouvre le formulaire de consentement, depuis les réglages, pour que le joueur change ses choix.
+    func presentPrivacyOptions() async {
+        do {
+            try await ConsentForm.presentPrivacyOptionsForm(from: topViewController)
+        } catch {
+            Self.log.error("Privacy options form error: \(Self.describe(error), privacy: .public)")
+        }
+        updatePrivacyOptionsRequirement()
+        // Le joueur a pu accepter maintenant ce qu'il avait refusé : les pubs peuvent démarrer.
+        await start()
     }
 
     /// Shows an ad if the player has finished enough games since the last one, and records it.
@@ -143,11 +168,20 @@ final class AdManager: NSObject {
     private func askForConsent() async {
         do {
             try await ConsentInformation.shared.requestConsentInfoUpdate(with: RequestParameters())
-            try await ConsentForm.loadAndPresentIfRequired(from: topViewController)
+            if canInterruptPlayer {
+                try await ConsentForm.loadAndPresentIfRequired(from: topViewController)
+            } else {
+                Self.log.notice("Consent form postponed: the player left the home screen")
+            }
         } catch {
             // No message set up or no network: `canRequestAds` tells whether ads may go on.
             Self.log.error("Consent form error: \(Self.describe(error), privacy: .public)")
         }
+        updatePrivacyOptionsRequirement()
+    }
+
+    private func updatePrivacyOptionsRequirement() {
+        isPrivacyOptionsRequired = ConsentInformation.shared.privacyOptionsRequirementStatus == .required
     }
 
     private static func kind(of unitID: String) -> String {
