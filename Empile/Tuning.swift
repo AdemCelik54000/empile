@@ -335,6 +335,15 @@ enum Tuning {
         static let isEnabled = true
         /// An ad is shown after this many finished games (lost or given up), then the count starts over.
         static let gamesPerAd = 5
+        /// Pas d'interstitielle moins de tant de secondes après la fermeture d'une pub récompensée : elle attend
+        /// la fin de partie suivante.
+        static let interstitialPauseAfterRewarded: TimeInterval = 60
+        /// Une pub chargée expire au bout d'une heure chez Google : elle est remplacée un peu avant.
+        static let adLifetime: TimeInterval = 55 * 60
+        /// Après un échec de chargement, nouvelle tentative au bout de ce délai, doublé à chaque échec d'affilée
+        /// jusqu'au plafond. Le retour à l'accueil ou de la connexion recharge sans attendre.
+        static let firstRetryDelay: TimeInterval = 5
+        static let maxRetryDelay: TimeInterval = 5 * 60
         /// Google's public test unit: it always serves test ads and never earns or risks anything.
         static let testInterstitialUnitID = "ca-app-pub-3940256099942544/4411468910"
         /// The real unit of the AdMob account. Only the App Store version uses it (see `AdUnits`), so testers
