@@ -54,6 +54,8 @@ final class AdManager: NSObject {
     /// lancement, par exemple), un appel suivant réessaie au lieu de laisser la session sans pub.
     func start() async {
         guard Tuning.Ads.isEnabled, !isStarting else { return }
+        // Origine de l'app (App Store, TestFlight, Xcode) vérifiée pendant le consentement, une fois par lancement.
+        AdUnits.prepare()
         guard !isStarted else {
             // La demande de suivi a pu être repoussée (le joueur avait quitté l'accueil) : c'est le moment.
             await requestTrackingIfNeeded()
@@ -198,7 +200,8 @@ final class AdManager: NSObject {
         isLoadingInterstitial = true
         defer { isLoadingInterstitial = false }
         let unitID = await AdUnits.interstitialID()
-        Self.log.info("Loading interstitial, unit \(unitID, privacy: .public) (\(Self.kind(of: unitID), privacy: .public))")
+        let reason = await AdUnits.origin.reason
+        Self.log.info("Loading interstitial, unit \(unitID, privacy: .public) (\(Self.kind(of: unitID), privacy: .public), because \(reason, privacy: .public))")
         do {
             interstitial = try await InterstitialAd.load(with: unitID, request: Request())
             interstitialLoadedAt = Date()
@@ -234,7 +237,8 @@ final class AdManager: NSObject {
         else { return }
         isLoadingRewarded = true
         defer { isLoadingRewarded = false }
-        Self.log.info("Loading rewarded ad, unit \(unitID, privacy: .public) (\(Self.kind(of: unitID), privacy: .public))")
+        let reason = await AdUnits.origin.reason
+        Self.log.info("Loading rewarded ad, unit \(unitID, privacy: .public) (\(Self.kind(of: unitID), privacy: .public), because \(reason, privacy: .public))")
         do {
             rewarded = try await RewardedAd.load(with: unitID, request: Request())
             rewardedLoadedAt = Date()

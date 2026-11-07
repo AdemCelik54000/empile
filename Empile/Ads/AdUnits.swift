@@ -1,9 +1,10 @@
 import OSLog
 import StoreKit
 
-/// Which ad unit to use: real ads only in the version downloaded from the App Store. Xcode builds, TestFlight
-/// and any other install get Google's test ads, so nobody on the team ever sees or clicks a real ad (which
-/// Google treats as fraud and can punish by closing the account).
+/// Which ad unit to use. Debug builds always get Google's test ads. In Release, test ads only when the app is
+/// positively known to come from TestFlight or Xcode, so nobody on the team ever clicks a real ad (which Google
+/// treats as fraud). Anything uncertain gets the real unit: a player from the App Store must never see test
+/// ads, which earn nothing.
 enum AdUnits {
     static func interstitialID() async -> String {
         await isAppStoreBuild ? Tuning.Ads.liveInterstitialUnitID : Tuning.Ads.testInterstitialUnitID
@@ -14,32 +15,66 @@ enum AdUnits {
         await isAppStoreBuild ? Tuning.Ads.liveRewardedUnitID : Tuning.Ads.testRewardedUnitID
     }
 
+    /// Ce que la vérification a conclu, et pourquoi : la raison accompagne chaque log de chargement.
+    struct Origin: Sendable {
+        let isAppStore: Bool
+        let reason: String
+    }
+
+    static var isAppStoreBuild: Bool {
+        get async { await origin.isAppStore }
+    }
+
+    static var origin: Origin {
+        get async { await check.value }
+    }
+
+    /// À appeler au lancement : lance la vérification sans attendre son résultat.
+    static func prepare() {
+        _ = check
+    }
+
     private static let log = Logger(subsystem: "app.empile.Empile", category: "ads")
 
-    /// Whether this install comes from the App Store. Anything unclear (Xcode, TestFlight, a receipt that
-    /// cannot be verified) counts as a test build. The reason is written to the log.
-    static var isAppStoreBuild: Bool {
-        get async {
-            #if DEBUG
-            log.info("AppTransaction not checked: debug build, Google test ads")
-            return false
-            #else
-            do {
-                switch try await AppTransaction.shared {
-                case .verified(let transaction):
-                    let isProduction = transaction.environment == .production
-                    log.info("AppTransaction verified, environment \(transaction.environment.rawValue, privacy: .public): \(isProduction ? "App Store build, real ads" : "not the App Store, Google test ads", privacy: .public)")
-                    return isProduction
-                case .unverified(_, let error):
-                    log.error("AppTransaction NOT verified (\(error.localizedDescription, privacy: .public)): Google test ads")
-                    return false
-                }
-            } catch {
-                let nsError = error as NSError
-                log.error("AppTransaction unavailable (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public): \(nsError.localizedDescription, privacy: .public)): Google test ads")
-                return false
+    /// Faite une seule fois par lancement : la première demande la démarre, les suivantes attendent ce même
+    /// résultat au lieu d'interroger StoreKit à chaque chargement de pub.
+    private static let check = Task { () -> Origin in
+        let origin = await detectOrigin()
+        log.info("Ad units: \(origin.isAppStore ? "REAL unit" : "Google test unit", privacy: .public) for this launch (\(origin.reason, privacy: .public))")
+        return origin
+    }
+
+    private static func detectOrigin() async -> Origin {
+        #if DEBUG
+        return Origin(isAppStore: false, reason: "debug build")
+        #else
+        do {
+            switch try await AppTransaction.shared {
+            case .verified(let transaction):
+                return origin(of: transaction.environment)
+            case .unverified(let transaction, let error):
+                // Signature invalide : l'environnement annoncé n'est pas fiable, donc incertain, donc vraies pubs.
+                return Origin(isAppStore: true, reason: "AppTransaction not verified (\(error.localizedDescription)), claims \(transaction.environment.rawValue): real unit by default")
             }
-            #endif
+        } catch {
+            let nsError = error as NSError
+            return Origin(isAppStore: true, reason: "AppTransaction unavailable (\(nsError.domain) \(nsError.code): \(nsError.localizedDescription)): real unit by default")
+        }
+        #endif
+    }
+
+    /// Seuls TestFlight (sandbox) et Xcode donnent les pubs de test ; tout autre environnement, connu ou non,
+    /// est traité comme l'App Store.
+    private static func origin(of environment: AppStore.Environment) -> Origin {
+        switch environment {
+        case .production:
+            Origin(isAppStore: true, reason: "AppTransaction verified: App Store")
+        case .sandbox:
+            Origin(isAppStore: false, reason: "AppTransaction verified: TestFlight (sandbox)")
+        case .xcode:
+            Origin(isAppStore: false, reason: "AppTransaction verified: Xcode")
+        default:
+            Origin(isAppStore: true, reason: "AppTransaction verified, unknown environment \(environment.rawValue): real unit by default")
         }
     }
 }
