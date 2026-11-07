@@ -381,7 +381,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.24;
+				MARKETING_VERSION = 1.25;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = app.empile.Empile;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -417,7 +417,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.24;
+				MARKETING_VERSION = 1.25;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = app.empile.Empile;
 				PRODUCT_NAME = "$(TARGET_NAME)";
