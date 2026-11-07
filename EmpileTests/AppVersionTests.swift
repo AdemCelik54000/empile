@@ -91,3 +91,21 @@ struct PlayBlockerTests {
         #expect(PlayBlocker.current(isOnline: false, requiredUpdate: update, isInGame: true) == nil)
     }
 }
+
+@Suite("The first look at the App Store")
+@MainActor
+struct UpdateCheckerTests {
+    @Test func startsUnchecked() {
+        #expect(!UpdateChecker().isFirstCheckDone)
+    }
+
+    /// An App Store that never answers holds the first game back for a moment only.
+    @Test func waitingGivesUpAtTheLimit() async {
+        let clock = ContinuousClock()
+        let start = clock.now
+        await UpdateChecker().waitForFirstCheck(upTo: .milliseconds(300))
+        let waited = clock.now - start
+        #expect(waited >= .milliseconds(300))
+        #expect(waited < .seconds(2))
+    }
+}

@@ -36,7 +36,13 @@ final class ConnectivityMonitor {
 final class UpdateChecker {
     /// Set when the player must update before playing.
     private(set) var requiredUpdate: AppStoreRelease?
+    /// Vrai dès que la première vérification a abouti ou échoué : avant, l'accueil attend un peu pour lancer une
+    /// partie, sinon un joueur rapide entrerait dans une partie (jamais coupée) avec une version périmée.
+    @ObservationIgnored private(set) var isFirstCheckDone = false
     @ObservationIgnored private var isChecking = false
+
+    /// Au plus ce délai d'attente au premier « Jouer » : un App Store qui ne répond pas ne bloque jamais le jeu.
+    static let firstCheckWait: Duration = .seconds(3)
 
     private static var installedVersion: AppVersion? {
         (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String).flatMap(AppVersion.init)
@@ -46,9 +52,21 @@ final class UpdateChecker {
     func check() async {
         guard !isChecking, let bundleID = Bundle.main.bundleIdentifier else { return }
         isChecking = true
-        defer { isChecking = false }
+        defer {
+            isChecking = false
+            isFirstCheckDone = true
+        }
         guard let release = await Self.fetchRelease(bundleID: bundleID).map(Self.debugOverride) else { return }
         requiredUpdate = release.isNewer(than: Self.installedVersion) ? release : nil
+    }
+
+    /// Rend la main quand la première vérification est finie, ou au bout de `limit` si elle traîne.
+    func waitForFirstCheck(upTo limit: Duration = firstCheckWait) async {
+        let clock = ContinuousClock()
+        let deadline = clock.now + limit
+        while !isFirstCheckDone, clock.now < deadline {
+            do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+        }
     }
 
     /// In debug builds, `-EmpileDebugStoreVersion 99.0` pretends the store has that version, to see the update screen.

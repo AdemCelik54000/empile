@@ -21,6 +21,8 @@ struct RootView: View {
     @State private var isLeaderboardShown = false
     /// A game is being given up: the ad, if one is due, is on screen or about to be.
     @State private var isAbandoningGame = false
+    /// « Jouer » a été touché avant la première réponse de l'App Store : la partie part dès qu'elle arrive.
+    @State private var isWaitingForUpdateCheck = false
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -38,6 +40,7 @@ struct RootView: View {
                 ads: ads,
                 isPaused: screen == .home || isPauseMenuShown,
                 onPause: pause,
+                onReplay: restart,
                 onHome: goHome
             )
             .accessibilityHidden(screen == .home || isPauseMenuShown)
@@ -93,6 +96,11 @@ struct RootView: View {
             connectivity.start()
             await updates.check()
         }
+        .onChange(of: screen) { _, screen in
+            // Chaque retour à l'accueil revérifie : sans ça, un joueur qui ne ferme jamais l'app jouerait
+            // indéfiniment avec une version périmée.
+            if screen == .home { Task { await updates.check() } }
+        }
         .onChange(of: connectivity.isOnline) { _, isOnline in
             // The check at launch fails without a connection: try again as soon as it is back.
             if isOnline { Task { await updates.check() } }
@@ -118,8 +126,9 @@ struct RootView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 scene.resumeFeedback()
-                // A game left open for days may have been updated on the store in the meantime.
-                if screen == .home { Task { await updates.check() } }
+                // Une app restée ouverte des jours a pu être mise à jour sur l'App Store entre-temps. Vérifié même
+                // en pleine partie : celle-ci continue, mais la suivante attendra la mise à jour.
+                Task { await updates.check() }
             } else if screen == .game && session.isPlaying {
                 // Leaving the app mid-round: come back to the pause menu, never to a running tower.
                 pause()
@@ -141,10 +150,22 @@ struct RootView: View {
         screen == .home && blocker == nil
     }
 
+    /// Attend d'abord la première réponse de l'App Store (quelques secondes au plus) : une partie lancée avant
+    /// ne serait plus coupée, même si une mise à jour est exigée.
     private func play() {
-        scene.startNewGame()
-        isPauseMenuShown = false
-        screen = .game
+        guard !isWaitingForUpdateCheck else { return }
+        Task {
+            if !updates.isFirstCheckDone {
+                isWaitingForUpdateCheck = true
+                await updates.waitForFirstCheck()
+                isWaitingForUpdateCheck = false
+            }
+            // L'écran « mise à jour requise » ou « pas de connexion » a pris la place de l'accueil.
+            guard screen == .home, blocker == nil else { return }
+            scene.startNewGame()
+            isPauseMenuShown = false
+            screen = .game
+        }
     }
 
     /// Starting over or quitting in the middle of a game counts as a finished game, so the ads cannot be dodged
@@ -161,7 +182,13 @@ struct RootView: View {
         }
     }
 
+    /// « Rejouer » après une défaite ou depuis la pause. Si une mise à jour est exigée, retour à l'accueil, où
+    /// l'écran de mise à jour attend : sinon enchaîner les parties sans jamais passer par l'accueil la contournerait.
     private func restart() {
+        guard updates.requiredUpdate == nil else {
+            goHome()
+            return
+        }
         scene.startNewGame()
         isPauseMenuShown = false
     }

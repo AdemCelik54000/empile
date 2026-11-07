@@ -12,6 +12,8 @@ struct GameView: View {
     let ads: AdManager
     let isPaused: Bool
     let onPause: () -> Void
+    /// Une nouvelle partie après une défaite : l'écran racine décide (une mise à jour exigée renvoie à l'accueil).
+    let onReplay: () -> Void
     let onHome: () -> Void
     @State private var headerBottom: CGFloat = 0
     /// Top of everything drawn at the bottom (hint included): the world keeps clear below it.
@@ -205,7 +207,7 @@ struct GameView: View {
                 score: session.score,
                 record: settings.bestScore,
                 isNewRecord: isNewRecord,
-                onReplay: { leaveGameOver(then: scene.startNewGame) },
+                onReplay: { leaveGameOver(then: onReplay) },
                 onHome: { leaveGameOver(then: onHome) }
             )
             .transition(.move(edge: .bottom).combined(with: .opacity))
