@@ -36,6 +36,8 @@ final class GameSession {
     private(set) var combo = Combo()
     /// Some piece in the tower can still move: the freeze power has something to freeze.
     private(set) var hasLooseBlocks = false
+    /// La partie a déjà été continuée après une défaite (pub récompensée) : une seule fois par partie.
+    private(set) var hasContinued = false
 
     @ObservationIgnored private let startingSupply: PieceSupply
     @ObservationIgnored private var supply: PieceSupply
@@ -84,9 +86,26 @@ final class GameSession {
         combo = Combo()
         hand = []
         hasLooseBlocks = false
+        hasContinued = false
         heldCardID = nil
         phase = .playing
         refillHand()
+    }
+
+    /// La partie vient d'être perdue et n'a pas encore été continuée : une pub peut la relancer.
+    var canContinue: Bool { phase == .gameOver && !hasContinued }
+
+    /// Reprend une partie perdue, après une pub regardée jusqu'au bout : quelques vies reviennent, le score, la
+    /// tour, la main et les pouvoirs restent tels quels. Une seule fois par partie.
+    /// - Returns: Whether the game is back on.
+    @discardableResult
+    func continueAfterLoss() -> Bool {
+        guard canContinue else { return false }
+        hasContinued = true
+        lives = max(1, Tuning.Continue.lives)
+        combo.reset()
+        phase = .playing
+        return true
     }
 
     /// The still tower now stands this many floors high.

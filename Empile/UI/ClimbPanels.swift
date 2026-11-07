@@ -161,11 +161,25 @@ struct WindBanner: View {
     }
 }
 
-/// Shown at the bottom once the last life is lost: play again, or go home.
+/// Shown at the bottom once the last life is lost: continue after an ad (for a few seconds), play again, or go
+/// home.
 struct GameOverPanel: View {
+    /// Ce qu'il faut au bouton « Continuer ».
+    struct ContinueState {
+        /// La partie peut encore être continuée (`GameSession.canContinue`).
+        let canContinue: Bool
+        /// Une pub récompensée est prête.
+        let isAdReady: Bool
+        /// Une pub est à l'écran, ou le joueur quitte déjà le panneau.
+        let isBusy: Bool
+        let action: () -> Void
+    }
+
     let score: Int
     let record: Int
     let isNewRecord: Bool
+    /// `nil` : pas de bouton « Continuer » (la partie a déjà été continuée une fois).
+    let continueOffer: ContinueState?
     let onReplay: () -> Void
     let onHome: () -> Void
 
@@ -188,6 +202,9 @@ struct GameOverPanel: View {
             }
             GlassEffectContainer(spacing: 10) {
                 VStack(spacing: 10) {
+                    if let continueOffer {
+                        ContinueButton(state: continueOffer)
+                    }
                     Button(action: onReplay) {
                         Label("Rejouer", systemImage: "arrow.counterclockwise")
                             .font(.headline)
@@ -204,6 +221,64 @@ struct GameOverPanel: View {
         }
         .padding(20)
         .glassEffect(.regular, in: .rect(cornerRadius: 28))
+    }
+}
+
+/// « Continuer » : une barre remplit tout le bouton en `Tuning.Continue.window` secondes, pendant lesquelles il
+/// se touche. Ensuite (ou dès le départ sans pub prête), il devient gris et ne se touche plus.
+private struct ContinueButton: View {
+    let state: GameOverPanel.ContinueState
+    private let offer = ContinueOffer()
+    /// Quand le panneau est apparu : le temps pour toucher part de là.
+    @State private var shownAt = Date.now
+    @State private var isTimeUp = false
+
+    var body: some View {
+        TimelineView(.animation(paused: isTimeUp)) { context in
+            // Une fois le temps écoulé, l'horloge s'arrête : sa dernière image peut dater d'un poil avant la fin.
+            let elapsed = isTimeUp ? offer.window : context.date.timeIntervalSince(shownAt)
+            let isAvailable = offer.isAvailable(elapsed: elapsed, canContinue: state.canContinue,
+                                                isAdReady: state.isAdReady, isBusy: state.isBusy)
+            // Sans pub prête, rien ne se remplit : le bouton est gris d'emblée.
+            let progress = state.isAdReady && state.canContinue ? offer.progress(elapsed: elapsed) : 1
+            Button(action: state.action) {
+                HStack(spacing: 12) {
+                    Image(systemName: "play.rectangle.fill")
+                        .font(.title2)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Continuer")
+                            .font(.headline)
+                        Text("Regarder une pub pour continuer")
+                            .font(.caption)
+                            .foregroundStyle(isAvailable ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tertiary))
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .foregroundStyle(isAvailable ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                .background(alignment: .leading) {
+                    GeometryReader { proxy in
+                        Rectangle()
+                            .fill(isAvailable ? AnyShapeStyle(.tint.opacity(0.45)) : AnyShapeStyle(.gray.opacity(0.25)))
+                            .frame(width: proxy.size.width * progress)
+                    }
+                }
+                .clipShape(.capsule)
+                .contentShape(.capsule)
+            }
+            .buttonStyle(.plain)
+            .disabled(!isAvailable)
+            .glassEffect(isAvailable ? .regular.interactive() : .regular, in: .capsule)
+            .saturation(isAvailable ? 1 : 0)
+            .accessibilityLabel(Text("Continuer"))
+            .accessibilityHint(Text(isAvailable ? "Regarder une pub pour reprendre la partie." : "Plus disponible."))
+        }
+        .task {
+            shownAt = .now
+            try? await Task.sleep(for: .seconds(offer.window))
+            isTimeUp = true
+        }
     }
 }
 

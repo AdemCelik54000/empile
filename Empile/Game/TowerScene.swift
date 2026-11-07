@@ -314,6 +314,22 @@ final class TowerScene: SKScene {
         session.startNewGame()
     }
 
+    /// La partie perdue reprend (pub regardée) : les pièces déjà tombées de la plateforme disparaissent sans
+    /// coûter de vie, ce qui bouge encore se fige comme avec le pouvoir de gel (une tour en train de s'écrouler
+    /// ne doit pas reprendre aussitôt la vie rendue), et la caméra revient au sommet.
+    /// - Returns: Whether the game is back on.
+    @discardableResult
+    func continueAfterLoss() -> Bool {
+        guard session.continueAfterLoss() else { return false }
+        cameraRig.showsWholeTower = false
+        tower.discardFallenBlocks()
+        if tower.hasLooseBlocks {
+            freezeTower()
+        }
+        celebrateAbility()
+        return true
+    }
+
     private static func makeWind() -> WindSchedule {
         WindSchedule(pause: Tuning.Wind.pause, warning: Tuning.Wind.warning, gust: Tuning.Wind.gust,
                      seed: .random(in: .min ... .max))

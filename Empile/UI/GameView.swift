@@ -207,6 +207,13 @@ struct GameView: View {
                 score: session.score,
                 record: settings.bestScore,
                 isNewRecord: isNewRecord,
+                // Déjà continuée une fois : le bouton n'a plus rien à proposer de la partie, il disparaît.
+                continueOffer: session.hasContinued ? nil : GameOverPanel.ContinueState(
+                    canContinue: session.canContinue,
+                    isAdReady: ads.isRewardedReady || !Tuning.Ads.isEnabled,
+                    isBusy: isWatchingAd || isLeavingGameOver,
+                    action: watchAdToContinue
+                ),
                 onReplay: { leaveGameOver(then: onReplay) },
                 onHome: { leaveGameOver(then: onHome) }
             )
@@ -225,7 +232,7 @@ struct GameView: View {
     /// Leaving the game over screen ends the game for good: it counts toward the next ad, which is shown now
     /// if one is due, never in the middle of a game.
     private func leaveGameOver(then action: @escaping () -> Void) {
-        guard !isLeavingGameOver else { return }
+        guard !isLeavingGameOver, !isWatchingAd else { return }
         isLeavingGameOver = true
         settings.registerFinishedGame()
         Task {
@@ -305,6 +312,21 @@ struct GameView: View {
             let earned = Tuning.Ads.isEnabled ? await ads.presentRewarded() : true
             if earned, let won = session.earnAbility() {
                 showStage(.roulette(won: won))
+            }
+            isWatchingAd = false
+        }
+    }
+
+    /// « Continuer » sur l'écran de défaite : si la pub est regardée jusqu'au bout, la partie reprend. Elle ne
+    /// compte pas comme finie, et `AdManager` ne montre pas d'interstitielle juste après cette pub.
+    private func watchAdToContinue() {
+        guard session.canContinue, !isWatchingAd, !isLeavingGameOver else { return }
+        isWatchingAd = true
+        Task {
+            // Sans pub (version des testeurs), la partie reprend tout de suite.
+            let earned = Tuning.Ads.isEnabled ? await ads.presentRewarded() : true
+            if earned {
+                scene.continueAfterLoss()
             }
             isWatchingAd = false
         }

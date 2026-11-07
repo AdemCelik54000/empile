@@ -160,6 +160,18 @@ final class Tower {
         }
     }
 
+    /// Les pièces déjà tombées de la plateforme disparaissent tout de suite, sans compter comme perdues : une
+    /// partie qui reprend ne paie pas pour ce qui s'est écroulé pendant l'écran de défaite.
+    func discardFallenBlocks() {
+        let fallen = blocks.filter(\.hasFallenOff)
+        guard !fallen.isEmpty else { return }
+        blocks.removeAll(where: \.hasFallenOff)
+        for block in fallen {
+            block.vanish()
+        }
+        isStable = false
+    }
+
     /// Fades every block out and starts again from an empty platform.
     func clear() {
         for block in blocks {

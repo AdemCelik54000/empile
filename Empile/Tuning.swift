@@ -356,6 +356,14 @@ enum Tuning {
         static let liveRewardedUnitID: String? = "ca-app-pub-8817900109973306/3873051927"
     }
 
+    /// « Continuer » sur l'écran de défaite : une pub récompensée relance la partie perdue, une fois par partie.
+    enum Continue {
+        /// Le bouton se remplit pendant ce temps, puis devient gris et ne se touche plus.
+        static let window: TimeInterval = 5
+        /// Vies rendues quand la partie reprend.
+        static let lives = 1
+    }
+
     enum Abilities {
         /// Of each power, at the start of a game.
         static let startingCount = 1
