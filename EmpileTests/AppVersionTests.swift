@@ -36,43 +36,37 @@ struct AppVersionTests {
         #expect(version("1") < version("1.0.1"))
     }
 
-    @Test func onlyAStrictlyNewerStoreVersionRequiresAnUpdate() {
-        let store = AppStoreRelease(version: version("1.23"), trackID: 1)
-        #expect(store.isNewer(than: version("1.22")))
-        #expect(store.isNewer(than: version("1.9")))
-        #expect(!store.isNewer(than: version("1.23")))
-        #expect(!store.isNewer(than: version("1.23.0")))
-        // A build waiting for review is ahead of the store.
-        #expect(!store.isNewer(than: version("1.24")))
-        #expect(!store.isNewer(than: nil))
+    @Test func onlyAnOlderInstalledVersionMustUpdate() {
+        let minimum = RequiredUpdate(minimumVersion: version("1.26"))
+        #expect(minimum.isRequired(for: version("1.25")))
+        #expect(minimum.isRequired(for: version("1.9")))
+        #expect(!minimum.isRequired(for: version("1.26")))
+        #expect(!minimum.isRequired(for: version("1.26.0")))
+        // A build waiting for review is ahead of the minimum.
+        #expect(!minimum.isRequired(for: version("1.27")))
+        #expect(!minimum.isRequired(for: nil))
     }
 }
 
-@Suite("The App Store lookup answer")
-struct AppStoreLookupTests {
-    @Test func readsTheVersionAndTheStoreID() throws {
-        let json = #"{"resultCount":1,"results":[{"trackId":6819031558,"version":"1.24","trackName":"Empile"}]}"#
-        let release = try #require(AppStoreRelease(lookupResponse: Data(json.utf8)))
-        #expect(release.version == AppVersion("1.24"))
-        #expect(release.trackID == 6819031558)
-        #expect(release.storeURL.absoluteString == "itms-apps://apps.apple.com/app/id6819031558")
+@Suite("The version file on the game's site")
+struct VersionFileTests {
+    @Test func readsTheMinimumVersion() throws {
+        let json = #"{ "minimumVersion": "1.26" }"#
+        let update = try #require(RequiredUpdate(versionFile: Data(json.utf8)))
+        #expect(update.minimumVersion == AppVersion("1.26"))
+        #expect(update.storeURL.absoluteString == "itms-apps://apps.apple.com/app/id6819031558")
     }
 
-    @Test func aGameNotPublishedYetIsNotFound() {
-        let json = #"{"resultCount":0,"results":[]}"#
-        #expect(AppStoreRelease(lookupResponse: Data(json.utf8)) == nil)
-    }
-
-    @Test func anUnreadableAnswerIsNotFound() {
-        #expect(AppStoreRelease(lookupResponse: Data("<html>".utf8)) == nil)
-        let json = #"{"results":[{"trackId":1,"version":"bêta"}]}"#
-        #expect(AppStoreRelease(lookupResponse: Data(json.utf8)) == nil)
+    @Test func anUnreadableFileLetsThePlayerIn() {
+        #expect(RequiredUpdate(versionFile: Data("<html>404</html>".utf8)) == nil)
+        #expect(RequiredUpdate(versionFile: Data(#"{ "version": "1.26" }"#.utf8)) == nil)
+        #expect(RequiredUpdate(versionFile: Data(#"{ "minimumVersion": "bêta" }"#.utf8)) == nil)
     }
 }
 
 @Suite("What keeps the player from starting a game")
 struct PlayBlockerTests {
-    private let update = AppStoreRelease(version: AppVersion("9.0")!, trackID: 1)
+    private let update = RequiredUpdate(minimumVersion: AppVersion("9.0")!)
 
     @Test func nothingWhenOnlineAndUpToDate() {
         #expect(PlayBlocker.current(isOnline: true, requiredUpdate: nil, isInGame: false) == nil)

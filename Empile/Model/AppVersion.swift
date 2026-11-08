@@ -37,48 +37,44 @@ struct AppVersion: Comparable, Sendable, CustomStringConvertible {
     }
 }
 
-/// The game as it is published on the App Store, read from the iTunes lookup service.
-struct AppStoreRelease: Equatable, Sendable {
-    let version: AppVersion
-    /// The App Store id of the game, to open its page.
-    let trackID: Int
+/// La version que le joueur doit avoir au minimum, lue dans le fichier de version du site du jeu.
+struct RequiredUpdate: Equatable, Sendable {
+    let minimumVersion: AppVersion
 
-    var storeURL: URL { URL(string: "itms-apps://apps.apple.com/app/id\(trackID)")! }
+    /// L'identifiant d'Empile sur l'App Store, pour ouvrir sa page.
+    static let appStoreID = 6819031558
 
-    /// Reads the first result of a lookup answer. Nil when the game is not found or the answer cannot be read.
-    init?(lookupResponse data: Data) {
-        struct Response: Decodable {
-            struct Result: Decodable {
-                let version: String
-                let trackId: Int
-            }
-            let results: [Result]
+    var storeURL: URL { URL(string: "itms-apps://apps.apple.com/app/id\(Self.appStoreID)")! }
+
+    /// Lit `{ "minimumVersion": "1.26" }`. Nil quand le fichier ne peut pas être lu.
+    init?(versionFile data: Data) {
+        struct File: Decodable {
+            let minimumVersion: String
         }
-        guard let result = (try? JSONDecoder().decode(Response.self, from: data))?.results.first,
-              let version = AppVersion(result.version) else { return nil }
-        self.init(version: version, trackID: result.trackId)
+        guard let file = try? JSONDecoder().decode(File.self, from: data),
+              let version = AppVersion(file.minimumVersion) else { return nil }
+        self.init(minimumVersion: version)
     }
 
-    init(version: AppVersion, trackID: Int) {
-        self.version = version
-        self.trackID = trackID
+    init(minimumVersion: AppVersion) {
+        self.minimumVersion = minimumVersion
     }
 
-    /// True only when the store has a strictly newer version than the one installed.
-    func isNewer(than installed: AppVersion?) -> Bool {
+    /// Vrai seulement quand la version installée est strictement plus ancienne que le minimum.
+    func isRequired(for installed: AppVersion?) -> Bool {
         guard let installed else { return false }
-        return version > installed
+        return installed < minimumVersion
     }
 }
 
 /// What keeps the player from starting a game, if anything.
 enum PlayBlocker: Equatable {
     case offline
-    case updateRequired(AppStoreRelease)
+    case updateRequired(RequiredUpdate)
 
     /// A game already running is never cut: the block only applies away from the tower.
     /// Without a connection the store cannot be opened anyway, so that comes first.
-    static func current(isOnline: Bool, requiredUpdate: AppStoreRelease?, isInGame: Bool) -> PlayBlocker? {
+    static func current(isOnline: Bool, requiredUpdate: RequiredUpdate?, isInGame: Bool) -> PlayBlocker? {
         guard !isInGame else { return nil }
         if !isOnline { return .offline }
         if let requiredUpdate { return .updateRequired(requiredUpdate) }

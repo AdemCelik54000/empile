@@ -30,34 +30,39 @@ final class ConnectivityMonitor {
     }
 }
 
-/// Asks the App Store which version of the game is published, and remembers it when it is newer than this one.
+/// Lit la version minimale exigée dans un petit fichier du site du jeu, et la retient quand celle installée est
+/// plus ancienne. Le fichier, pas l'App Store, décide : on n'y monte le chiffre qu'une fois la nouvelle version
+/// proposée partout, donc aucun joueur n'est bloqué devant un App Store qui n'a encore rien de neuf à lui donner.
 @MainActor
 @Observable
 final class UpdateChecker {
     /// Set when the player must update before playing.
-    private(set) var requiredUpdate: AppStoreRelease?
+    private(set) var requiredUpdate: RequiredUpdate?
     /// Vrai dès que la première vérification a abouti ou échoué : avant, l'accueil attend un peu pour lancer une
     /// partie, sinon un joueur rapide entrerait dans une partie (jamais coupée) avec une version périmée.
     @ObservationIgnored private(set) var isFirstCheckDone = false
     @ObservationIgnored private var isChecking = false
 
-    /// Au plus ce délai d'attente au premier « Jouer » : un App Store qui ne répond pas ne bloque jamais le jeu.
+    /// Au plus ce délai d'attente au premier « Jouer » : un site qui ne répond pas ne bloque jamais le jeu.
     static let firstCheckWait: Duration = .seconds(3)
+    /// Le fichier `empile-version.json` du dépôt `ademcelik54000.github.io`, par exemple
+    /// `{ "minimumVersion": "1.26" }`. GitHub Pages le garde jusqu'à 10 minutes en cache.
+    static let versionFileURL = URL(string: "https://ademcelik54000.github.io/empile-version.json")!
 
     private static var installedVersion: AppVersion? {
         (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String).flatMap(AppVersion.init)
     }
 
-    /// Any failure (no network, game not published yet, unreadable answer) lets the player in.
+    /// Tout échec (pas de réseau, fichier absent ou illisible) laisse jouer : on ne bloque que sur une vraie réponse.
     func check() async {
-        guard !isChecking, let bundleID = Bundle.main.bundleIdentifier else { return }
+        guard !isChecking else { return }
         isChecking = true
         defer {
             isChecking = false
             isFirstCheckDone = true
         }
-        guard let release = await Self.fetchRelease(bundleID: bundleID).map(Self.debugOverride) else { return }
-        requiredUpdate = release.isNewer(than: Self.installedVersion) ? release : nil
+        guard let minimum = Self.debugOverride(await Self.fetchRequirement()) else { return }
+        requiredUpdate = minimum.isRequired(for: Self.installedVersion) ? minimum : nil
     }
 
     /// Rend la main quand la première vérification est finie, ou au bout de `limit` si elle traîne.
@@ -69,27 +74,21 @@ final class UpdateChecker {
         }
     }
 
-    /// In debug builds, `-EmpileDebugStoreVersion 99.0` pretends the store has that version, to see the update screen.
-    private static func debugOverride(_ release: AppStoreRelease) -> AppStoreRelease {
+    /// En debug, `-EmpileDebugMinimumVersion 99.0` fait comme si le fichier exigeait cette version, pour voir
+    /// l'écran de mise à jour, même si le fichier n'a pas pu être lu.
+    private static func debugOverride(_ requirement: RequiredUpdate?) -> RequiredUpdate? {
         #if DEBUG
-        if let forced = UserDefaults.standard.string(forKey: "EmpileDebugStoreVersion").flatMap(AppVersion.init) {
-            return AppStoreRelease(version: forced, trackID: release.trackID)
+        if let forced = UserDefaults.standard.string(forKey: "EmpileDebugMinimumVersion").flatMap(AppVersion.init) {
+            return RequiredUpdate(minimumVersion: forced)
         }
         #endif
-        return release
+        return requirement
     }
 
-    private static func fetchRelease(bundleID: String) async -> AppStoreRelease? {
-        var components = URLComponents(string: "https://itunes.apple.com/lookup")!
-        components.queryItems = [
-            URLQueryItem(name: "bundleId", value: bundleID),
-            URLQueryItem(name: "country", value: "fr"),
-        ]
-        guard let url = components.url else { return nil }
-        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
-        request.httpMethod = "GET"
+    private static func fetchRequirement() async -> RequiredUpdate? {
+        let request = URLRequest(url: versionFileURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
-        return AppStoreRelease(lookupResponse: data)
+        return RequiredUpdate(versionFile: data)
     }
 }

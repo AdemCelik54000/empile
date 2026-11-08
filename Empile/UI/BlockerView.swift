@@ -51,9 +51,9 @@ struct BlockerView: View {
                     .foregroundStyle(.secondary)
             }
             .frame(minHeight: 52)
-        case .updateRequired(let release):
+        case .updateRequired(let update):
             Button {
-                openURL(release.storeURL)
+                openURL(update.storeURL)
             } label: {
                 Label("Mettre à jour", systemImage: "arrow.down.circle.fill")
                     .font(.title3.weight(.semibold))
